@@ -1,0 +1,10 @@
+general:SF role:lord starter:true 
+general:IJ role:loyalist 
+general:GM role:rebel maxhp:1 nationality:OMNI 
+general:GM role:rebel maxhp:1 nationality:OMNI 
+general:GM role:rebel maxhp:1 nationality:OMNI 
+general:GM role:rebel maxhp:1 nationality:OMNI equip:109
+general:GM role:rebel maxhp:1 nationality:OMNI equip:122
+general:GM role:rebel maxhp:1 nationality:OMNI 
+general:GM role:rebel maxhp:1 nationality:OMNI 
+general:GM role:rebel maxhp:1 nationality:OMNI 

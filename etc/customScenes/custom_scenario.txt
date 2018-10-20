@@ -1,0 +1,4 @@
+
+setPile:13,12,11,10,9,8,7,4,3,2,1,0,276
+general:CHAR_ZAKU role:lord starter:true draw:0 
+general:select role:rebel draw:0 
