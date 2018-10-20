@@ -9373,6 +9373,7 @@ qiangwu = sgs.CreateTriggerSkill{
 			if player:canDiscard(player, "he") then
 				local card = room:askForCard(player, "..!", self:objectName(), data)
 				--懒得写了，ZY奆神帮我
+				--16神也来帮帮我
 			end
 		end
 	end
