@@ -18,7 +18,8 @@
 :: -b	bgm	audio/system/
 :: -c	card(not equip)	image/big-card/	image/card/	audio/card/female/	audio/card/male/
 :: -e	equip	image/big-card/	image/card/	image/equips/	image/fullskin/small-equips/
-:: -g	general	image/fullskin/generals/full/	image/generals/card/	audio/death/
+:: -g	general	image/fullskin/generals/full/	image/generals/card/
+:: -gv	general(+death voice)	image/fullskin/generals/full/	image/generals/card/	audio/death/
 :: -k	kingdom	image/fullskin/kingdom/frame/	image/fullskin/kingdom/frame/dashboard/	image/kingdom/icon/	image/system/backdrop/	skins/defaultSkin.image.json	skins/fulldefaultSkin.image.json
 :: -m	mark	image/mark/
 :: -p	pass	etc/customScenes/	lang/zh_CN/Mini.lua
@@ -141,6 +142,11 @@ start QSanguosha.exe
 			)
 			:: general
 			if "!tag!" == "-g" (
+				call :Download image/fullskin/generals/full/!a!.png
+				call :Download image/generals/card/!a!.jpg
+			)
+			:: general(+death voice)
+			if "!tag!" == "-gv" (
 				call :Download image/fullskin/generals/full/!a!.png
 				call :Download image/generals/card/!a!.jpg
 				call :Download audio/death/!a!.ogg
