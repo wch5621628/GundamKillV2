@@ -16,10 +16,11 @@
 :: Tag	Desc	Path
 :: -a	anime	image/system/emotion/NEWFOLDER	PS:Need to speficy the last index of image files, e.g. yuudachi-25 (download 0.png to 25.png)
 :: -b	bgm	audio/system/
-:: -c	card(not equip)	image/big-card/	image/card/	audio/card/female/	audio/card/male/
+:: -c	card(not equip)	image/big-card/	image/card/
+:: -cv	c+voice	image/big-card/	image/card/	audio/card/female/	audio/card/male/
 :: -e	equip	image/big-card/	image/card/	image/equips/	image/fullskin/small-equips/
 :: -g	general	image/fullskin/generals/full/	image/generals/card/
-:: -gv	general(+death voice)	image/fullskin/generals/full/	image/generals/card/	audio/death/
+:: -gv	g+death voice	image/fullskin/generals/full/	image/generals/card/	audio/death/
 :: -k	kingdom	image/fullskin/kingdom/frame/	image/fullskin/kingdom/frame/dashboard/	image/kingdom/icon/	image/system/backdrop/	skins/defaultSkin.image.json	skins/fulldefaultSkin.image.json
 :: -m	mark	image/mark/
 :: -p	pass	etc/customScenes/	lang/zh_CN/Mini.lua
@@ -30,7 +31,7 @@
 
 :: Sample of update serial (multiple lines of serial is acceptable, good to sort by version no. ascendingly):
 :: 20181001:-g ASTRAY_RED -s jianhun-4 huishou-3 guanglei-4
-:: 20181020:-a yuudachi-25 -b BGM1 -c final_vent decade -e laplace_box -g zhongyao -gv caocao -k ZEON -m @kuangxi -p 1 -s baiyin-1 dahe -o QSanguosha.exe
+:: 20181020:-a yuudachi-25 -b BGM1 -c drowning -cv final_vent decade -e laplace_box -g zhongyao -gv caocao -k ZEON -m @kuangxi -p 1 -s baiyin-1 dahe -o QSanguosha.exe
 
 @echo off
 color 3F
@@ -130,6 +131,11 @@ start QSanguosha.exe
 			if "!tag!" == "-c" (
 				call :Download image/big-card/!a!.png
 				call :Download image/card/!a!.png
+			)
+			:: c+voice
+			if "!tag!" == "-cv" (
+				call :Download image/big-card/!a!.png
+				call :Download image/card/!a!.png
 				call :Download audio/card/female/!a!.ogg
 				call :Download audio/card/male/!a!.ogg
 			)
@@ -145,7 +151,7 @@ start QSanguosha.exe
 				call :Download image/fullskin/generals/full/!a!.png
 				call :Download image/generals/card/!a!.jpg
 			)
-			:: general(+death voice)
+			:: g+death voice
 			if "!tag!" == "-gv" (
 				call :Download image/fullskin/generals/full/!a!.png
 				call :Download image/generals/card/!a!.jpg
