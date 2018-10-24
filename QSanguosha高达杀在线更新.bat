@@ -30,7 +30,7 @@
 
 :: Sample of update serial (multiple lines of serial is acceptable, good to sort by version no. ascendingly):
 :: 20181001:-g ASTRAY_RED -s jianhun-4 huishou-3 guanglei-4
-:: 20181020:-a yuudachi-25 -b BGM1 -c final_vent decade -e laplace_box -g caocao -k ZEON -m @kuangxi -p 1 -s baiyin-1 dahe -o QSanguosha.exe
+:: 20181020:-a yuudachi-25 -b BGM1 -c final_vent decade -e laplace_box -g zhongyao -gv caocao -k ZEON -m @kuangxi -p 1 -s baiyin-1 dahe -o QSanguosha.exe
 
 @echo off
 color 3F
