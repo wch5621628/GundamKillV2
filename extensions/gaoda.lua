@@ -522,7 +522,8 @@ generalName2BGM = function(name)
 		{"BGM28", "LUPUS", "REX"},
 		{"BGM29", "STRIKE_NOIR"},
 		{"BGM"..math.random(30, 31), "G_SELF", "G_SELF_PP"},
-		{"BGM"..math.random(32, 34), "ASTRAY_RED"},
+		{"BGM"..(32+2*math.random(0, 1)), "ASTRAY_RED"},
+		{"BGM"..math.random(33, 34), "ASTRAY_BLUE"},
 		
 		{"BGM99", "itemshow"}
 	}
@@ -556,7 +557,7 @@ gdsbgm = sgs.CreateTriggerSkill{
 		if room:getTag("gdsbgm"):toBool() then return false end
 		room:setTag("gdsbgm", sgs.QVariant(true))
 		local name
-		if player:getGameMode() == "_mini_1" then
+		if room:getOwner():getGameMode() == "_mini_1" then
 			name = generalName2BGM(room:getOwner():getGeneralName()) --扭蛋BGM
 		else
 			name = generalName2BGM(room:getLord():getGeneralName())
@@ -9356,28 +9357,247 @@ ASTRAY_RED:addSkill(guanglei)
 
 ASTRAY_BLUE = sgs.General(extension, "ASTRAY_BLUE", "ORB", 4, true, false)
 
---强武:当你造成伤害后，你可以摸两张牌，然后弃置一张牌，你根据弃置牌的类别获得以下效果，直到你的下回合开始前。
---基本牌：你可以将与伤害牌相同花色的手牌当【挡】使用。
---锦囊牌：出牌阶段，你使用颜色与X不同的【杀】时无次数限制。（X为你于此阶段使用的上一张【杀】）
-
---蛇尾:准备阶段开始时，你可以将装备区或判定区里的一张牌当【决斗】使用，目标角色每次须连续打出两张【杀】。
-
-qiangwu = sgs.CreateTriggerSkill{
-	name = "qiangwu",
+luaqiangwu = sgs.CreateTriggerSkill{
+	name = "luaqiangwu",
 	events = {sgs.Damage},
 	on_trigger = function(self, event, player, data)
 	    local room = player:getRoom()
 		local damage = data:toDamage()
 		if room:askForSkillInvoke(player, self:objectName(), data) then
-			player:drawCards(2, self:objectName())
+			room:broadcastSkillInvoke(self:objectName())
+			player:drawCards(1, self:objectName())
 			if player:canDiscard(player, "he") then
-				local card = room:askForCard(player, "..!", self:objectName(), data)
-				--懒得写了，ZY奆神帮我
-				--16神也来帮帮我
+				local card = room:askForCard(player, "..", "@luaqiangwu", data, self:objectName())
+				if card then
+					if card:isKindOf("BasicCard") then
+						room:setPlayerMark(player, "luaqiangwub", 1)
+					elseif card:isKindOf("TrickCard") then
+						room:setPlayerMark(player, "luaqiangwut", 1)
+					end
+				end
 			end
 		end
 	end
 }
+
+luaqiangwumark = sgs.CreateTriggerSkill{
+	name = "#luaqiangwumark",
+	events = {sgs.TurnStart, sgs.CardUsed},
+	on_trigger = function(self, event, player, data)
+	    local room = player:getRoom()
+		if event == sgs.TurnStart then
+			room:setPlayerMark(player, "luaqiangwub", 0)
+			room:setPlayerMark(player, "luaqiangwut", 0)
+			room:setPlayerProperty(player, "luaqiangwucolor", sgs.QVariant())
+		else
+			local use = data:toCardUse()
+			if player:getPhase() == sgs.Player_Play and use.card and use.card:isKindOf("Shoot") then
+				local color = "none"
+				if use.card:isBlack() then
+					color = "black"
+				elseif use.card:isRed() then
+					color = "red"
+				end
+				room:setPlayerProperty(player, "luaqiangwucolor", sgs.QVariant(color))
+			end
+		end
+	end
+}
+
+luaqiangwub = sgs.CreateTriggerSkill{
+	name = "#luaqiangwub",
+	events = {sgs.DamageInflicted},
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local damage = data:toDamage()		
+		if damage.card and (damage.card:isKindOf("Slash") or damage.card:isKindOf("Shoot") and damage.card:objectName() ~= "pierce_shoot") then
+			
+			if player:getMark("luaqiangwub") == 0 then return false end
+			local can_invoke = false
+			for _,card in sgs.qlist(player:getCards("he")) do
+				if card:getSuit() == sgs.Card_Spade then
+					can_invoke = true
+				end
+			end
+			if not can_invoke then return false end
+			
+			local guard
+			if damage.from then
+				guard = room:askForCard(player, "Guard#.|spade", "@luaqiangwu-Guard:"..damage.card:objectName()..":"..damage.from:objectName(), sgs.QVariant(), sgs.Card_MethodNone, damage.from)
+			else
+				guard = room:askForCard(player, "Guard#.|spade", "@@luaqiangwu-Guard:"..damage.card:objectName(), sgs.QVariant(), sgs.Card_MethodNone, nil)
+			end
+			if guard then
+			
+				if not guard:isKindOf("Guard") then --黑桃反击挡不转化为普通挡
+					local gcard = guard
+					if guard:isKindOf("Slash") then
+						guard = sgs.Sanguosha:cloneCard("counter_guard", gcard:getSuit(), gcard:getNumber())
+						guard:setObjectName("counter_guard")
+					else
+						guard = sgs.Sanguosha:cloneCard("Guard", gcard:getSuit(), gcard:getNumber())
+					end
+					guard:addSubcard(gcard)
+					guard:setSkillName("luaqiangwu")
+				end
+				room:useCard(sgs.CardUseStruct(guard, player, player))
+
+				math.random()
+				if (damage.card:isKindOf("Shoot") or math.random(1, 100) <= 70) then
+					local log = sgs.LogMessage()
+					log.type = "#burstd"
+					log.to:append(damage.to)
+					log.arg = damage.damage
+					log.arg2 = damage.damage - 1
+					room:sendLog(log)
+					damage.damage = damage.damage - 1
+					if damage.damage < 1 then
+						room:setEmotion(player, "skill_nullify")
+						
+						if damage.from and guard:objectName() == "counter_guard" then
+							room:doAnimate(1, player:objectName(), damage.from:objectName())
+							local card = room:askForCard(damage.from, "jink", "@fengong", sgs.QVariant(), sgs.Card_MethodResponse, player, false, self:objectName(), false)
+							if not card then
+								room:damage(sgs.DamageStruct(guard, player, damage.from))
+							end
+						end
+						
+						return true
+					end
+					data:setValue(damage)
+				else
+					local log = sgs.LogMessage()
+					log.type = "#Guard_failed"
+					log.from = player
+					log.card_str = guard:toString()
+					room:sendLog(log)
+				end
+			end
+		end
+	end
+}
+
+luaqiangwut = sgs.CreateTargetModSkill{
+	name = "#luaqiangwut",
+	pattern = "Shoot",
+	residue_func = function(self, player, card)
+		local color = player:property("luaqiangwucolor"):toString()
+		if player and player:getMark("luaqiangwut") > 0 and ((card:isBlack() and color == "red") or (card:isRed() and color == "black")) then
+			return 998
+		else
+			return 0
+		end
+	end
+}
+
+sheweivs = sgs.CreateZeroCardViewAsSkill{
+	name = "shewei",
+	response_pattern = "@@shewei",
+	view_as = function(self)
+	    local id = sgs.Self:property("shewei"):toInt()
+		local acard = sgs.Sanguosha:cloneCard("duel", sgs.Card_SuitToBeDecided, -1)
+		acard:addSubcard(id)
+		acard:setSkillName(self:objectName())
+		return acard
+	end
+}
+
+shewei = sgs.CreateTriggerSkill{
+	name = "shewei",
+	events = {sgs.EventPhaseStart},
+	view_as_skill = sheweivs,
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if event == sgs.EventPhaseStart then
+			if player:getPhase() == sgs.Player_Start and not player:getCards("ej"):isEmpty() and room:askForSkillInvoke(player, self:objectName(), data) then
+				local id = room:askForCardChosen(player, player, "ej", self:objectName())
+				if id ~= -1 then
+					room:setPlayerProperty(player, "shewei", sgs.QVariant(id))
+					room:askForUseCard(player, "@@shewei", "@shewei")
+					room:setPlayerProperty(player, "shewei", sgs.QVariant())
+				end
+			end
+		end
+	end
+}
+
+sheweie = sgs.CreateTriggerSkill{
+	name = "#sheweie",
+	frequency = sgs.Skill_Compulsory,
+	events = {sgs.CardEffected},
+	priority = 2,
+	can_trigger = function(self, target)
+		return target
+	end,
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local effect = data:toCardEffect()
+		local can_invoke = false
+		if effect.card and effect.card:isKindOf("Duel") then				
+			if effect.from and effect.from:isAlive() and effect.from:property("shewei"):toInt() > 0 and effect.card:getSkillName() == "shewei" then
+				can_invoke = true
+			end
+			if effect.to and effect.to:isAlive() and effect.to:hasSkill("wushuang") then
+				can_invoke = true
+			end
+		end
+		if not can_invoke then return false end
+		if effect.card:isKindOf("Duel") then
+			if room:isCanceled(effect) then
+				effect.to:setFlags("Global_NonSkillNullify")
+				return true
+			end
+			if effect.to:isAlive() then
+				local second = effect.from
+				local first = effect.to
+				room:setEmotion(first, "duel")
+				room:setEmotion(second, "duel")
+				while true do
+					if not first:isAlive() then
+						break
+					end
+					local slash
+					if second:hasSkill("wushuang") or (second:property("shewei"):toInt() > 0 and effect.card:getSkillName() == "shewei") then
+						slash = room:askForCard(first,"slash","@wushuang-slash-1:" .. second:objectName(),data,sgs.Card_MethodResponse, second)
+						if slash == nil then
+							break
+						end
+
+						slash = room:askForCard(first, "slash", "@wushuang-slash-2:" .. second:objectName(),data,sgs.Card_MethodResponse,second)
+						if slash == nil then
+							break
+						end
+					else
+						slash = room:askForCard(first,"slash","duel-slash:" .. second:objectName(),data,sgs.Card_MethodResponse,second)
+						if slash == nil then
+							break
+						end
+					end
+					local temp = first
+					first = second
+					second = temp
+				end
+				local damage = sgs.DamageStruct(effect.card, second, first)
+				if second:isDead() then
+					damage = sgs.DamageStruct(effect.card, nil, first)
+				end
+				if second:objectName() ~= effect.from:objectName() then
+					damage.by_user = false
+				end
+				room:damage(damage)
+			end
+			room:setTag("SkipGameRule",sgs.QVariant(true))
+		end
+		return false
+	end
+}
+
+ASTRAY_BLUE:addSkill(luaqiangwu)
+ASTRAY_BLUE:addSkill(luaqiangwumark)
+ASTRAY_BLUE:addSkill(luaqiangwub)
+ASTRAY_BLUE:addSkill(luaqiangwut)
+ASTRAY_BLUE:addSkill(shewei)
+ASTRAY_BLUE:addSkill(sheweie)
 
 STRIKE_NOIR = sgs.General(extension, "STRIKE_NOIR", "OMNI", 4, true, false)
 
@@ -13040,6 +13260,31 @@ sgs.LoadTranslationTable{
 	["$guanglei2"] = "俺はあいつらを認めねぇ…だから負けられねぇんだ!",
 	["$guanglei3"] = "舐めんなよ! 戦艦10隻来たって、レッドフレームは守り切るぜ",
 	["$guanglei4"] = "アンタらが歴戦の手練なら、俺は火事場の天才だゼ!!",
+	
+	["ASTRAY_BLUE"] = "蓝异端2L",
+	["#ASTRAY_BLUE"] = "最强佣兵",
+	["~ASTRAY_BLUE"] = "サーペントテールの名が聞いて呆れるな、酷い有り様だ",
+	["designer:ASTRAY_BLUE"] = "高达杀制作组",
+	["cv:ASTRAY_BLUE"] = "叢雲·劾",
+	["illustrator:ASTRAY_BLUE"] = "wch5621628",
+	["luaqiangwu"] = "强武",
+	[":luaqiangwu"] = "当你造成伤害后，你可以摸一张牌，然后可以弃置一张牌，根据弃置牌的类别获得以下效果，直到你的下回合开始前。\
+基本牌：你可以将一张黑桃牌当【挡】使用，若转化牌为【杀】，视为反击【挡】。\
+锦囊牌：出牌阶段，你以<b>黑色</b>与<font color='red'><b>红色</b></font>相间的形式使用【射击】时无次数限制。",
+	["@luaqiangwu"] = "你可弃置一张牌，根据牌类获得效果：<br>①基本牌：<font color='black'>♠</font>牌当【挡】使用，若转化牌为【杀】，视为反击【挡】<br>②锦囊牌：出牌阶段，你以<font color='black'><b>黑色</b></font>与<font color='red'><b>红色</b></font>相间的形式使用【射击】时无次数限制",
+	["@luaqiangwu-Guard"] = "%dest 令你受到【%src】的伤害，请使用一张【档】<br>强武：你可以将一张<font color='black'>♠</font>牌当【挡】使用",
+	["@@luaqiangwu-Guard"] = "你受到【%src】造成的伤害，请使用一张【档】<br>强武：你可以将一张<font color='black'>♠</font>牌当【挡】使用",
+	["shewei"] = "蛇尾",
+	[":shewei"] = "准备阶段开始时，你可以将装备区或判定区里的一张牌当【决斗】使用，目标角色每次须连续打出两张【杀】。",
+	["@shewei"] = "请选择【决斗】的目标",
+	["~shewei"] = "选择目标→确定",
+	["$luaqiangwu1"] = "悪いが、破壊させて貰う!",
+	["$luaqiangwu2"] = "勝負あったな",
+	["$luaqiangwu3"] = "残念だが、お前の負けだ。",
+	["$luaqiangwu4"] = "消えるのはお前の方だ!",
+	["$shewei1"] = "これがサーペントテールだ。",
+	["$shewei2"] = "サーペントテールと知って掛かってくるならば、容赦はしない",
+	["$shewei3"] = "敵は倒せるときに倒す、それが傭兵のやり方だ",
 	
 	["STRIKE_NOIR"] = "漆黑突击",
 	["#STRIKE_NOIR"] = "幻痛之袭",
