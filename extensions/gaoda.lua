@@ -27,20 +27,20 @@ g2data = "g2.lua" --金币、皮肤、支援机
 g3data = "g3.lua" --每日奖励
 
 do
-    require  "lua.config"
+	require  "lua.config"
 	local config = config
 	local kingdoms = config.kingdoms
 	config.kingdoms = { "EFSF", "ZEON", "SLEEVE", "OMNI", "ZAFT", "ORB", "CB", "TEKKADAN", "OTHERS"--[[, "wei", "shu", "wu", "qun", "god"]] }
 	config.kingdom_colors = {
 		EFSF = "#547998",
 		ZEON = "#a52442",
-        SLEEVE = "#96943D",
+		SLEEVE = "#96943D",
 		OMNI = "#3cc451",
 		ZAFT = "#FF0000",
 		ORB = "#feea00",
 		CB = "#7097df",
 		TEKKADAN = "#d80000",
-        OTHERS = "#8A807A",
+		OTHERS = "#8A807A",
 		wei = "#547998",
 		shu = "#D0796C",
 		wu = "#4DB873",
@@ -3798,13 +3798,14 @@ duilie = sgs.CreateTriggerSkill{
 				room:setPlayerMark(q,"@duilieD",0)
 		    end
 			if room:askForSkillInvoke(player,self:objectName(),data) then
+				room:broadcastSkillInvoke(self:objectName())
 				local judge = sgs.JudgeStruct()
 				judge.pattern = ".|black"
 				judge.good = true
 				judge.play_animation = false
 				judge.reason = self:objectName()
 				judge.who = player
-				room:judge(judge)
+				room:judge(judge)				
 				if math.mod(judge.card:getNumber(),2) == 1 then
 					room:setPlayerMark(player,"@duilieA",1)
 					local log = sgs.LogMessage()
@@ -3934,6 +3935,7 @@ zhihui = sgs.CreateTriggerSkill{
 	    if player:getPhase() == sgs.Player_Start and (player:getMark("@duilieA") > 0 or player:getMark("@duilieB") > 0 or player:getMark("@duilieC") > 0 or player:getMark("@duilieD") > 0) and room:askForSkillInvoke(player,self:objectName(),data) then
 			local target = room:askForPlayerChosen(player, tos, self:objectName(), "@@zhihui", true, true)
 			if target then
+				room:broadcastSkillInvoke(self:objectName())
 			    room:acquireSkill(target, "#duiliee")
 				if player:getMark("@duilieA") > 0 then
 				    room:setPlayerMark(target,"@duilieA",1)
@@ -4765,7 +4767,9 @@ shenniaocard = sgs.CreateSkillCard{
 		end
 		--[[room:setPlayerProperty(effect.to, "alive", sgs.QVariant(false))
 		room:setPlayerProperty(effect.to, "role", sgs.QVariant("unknown"))--set original role before revive
-		room:doBroadcastNotify(sgs.CommandType.S_COMMAND_KILL_PLAYER, sgs.QVariant(effect.to:objectName()))]]--BUG:neo zeong test
+		room:doBroadcastNotify(sgs.CommandType.S_COMMAND_KILL_PLAYER, sgs.QVariant(effect.to:objectName()))
+		room:broadcastProperty(effect.to, "role")
+		room:resetAI(effect.to)]]--BUG:neo zeong test
 	end,
 }
 
@@ -12900,9 +12904,11 @@ sgs.LoadTranslationTable{
 	
 	["ReZEL"] = "里歇尔",
 	["#ReZEL"] = "联邦精锐",
-	["~ReZEL"] = "",
+	["~ReZEL"] = "臆病だから生き残ったわけじゃないし、\n\z
+勇敢な奴が死んだわけでもない、\n\z
+両者を分けたのは…運だ",
 	["designer:ReZEL"] = "wch5621628 & Sankies & NOS7IM",
-	["cv:ReZEL"] = "诺姆队长",
+	["cv:ReZEL"] = "诺姆·帕西考克",
 	["illustrator:ReZEL"] = "Sankies",
 	["duilie"] = "队列",
 	[":duilie"] = "准备阶段开始时，你可以进行一次判定，根据判定牌获得相应效果，直到你的下回合开始前：\
@@ -12923,8 +12929,12 @@ sgs.LoadTranslationTable{
 <font color='yellow'>当你成为一张</font><b><font color='red'>红色</font></b><font color='yellow'>牌的目标后，你可以摸一张牌</font>",
 	["#duilieBe"] = "%from 的技能 %arg 被触发，点数为<b>双数</b>的牌对其无效",
 	["zhihui"] = "指挥",
-	[":zhihui"] = "当你发动“队列”后，你可以令你攻击范围内的一名其他角色共享你的效果。",
+	[":zhihui"] = "当你发动<b>“队列”</b>后，你可以令你攻击范围内的一名其他角色共享你的效果。",
 	["@@zhihui"] = "请选择攻击范围内的一名其他角色共享“队列”",
+	["$duilie1"] = "接近中の船，ただちに停船せよ",
+	["$duilie2"] = "貴船は，本艦の防衛線に侵入している",
+	["$zhihui1"] = "お前は運が強かったんだ",
+	["$zhihui2"] = "焦るな，リディ少尉!隊列を維持しろ!",
 	
 	["DELTA_PLUS"] = "德尔塔+",
 	["#DELTA_PLUS"] = "时代的反抗者",

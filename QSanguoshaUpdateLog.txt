@@ -2,3 +2,4 @@
 20181227:-gv ASTRAY_BLUE -s luaqiangwu-4 shewei-3
 20190107:-b BGM35 -gv F91 -m @canying -s fangcheng-4 canying-7
 20190205:-a koh-20 maxiu-25 -b BGM36 BGM98 op5 ny4 ny5 -g F91 ASTRAY_BLUE ASTRAY_BLUE_skin1 F91_skin1 F91_skin2 GOD_skin1 GOD_skin2 -gv GOD -m @aoyi @mingjingzhishui -s shenzhang-4 mingjingzhishui-2 aoyi-8 -o sanguosha.qm audio/skill/gdsbgm14.ogg audio/skill/gdsvoice19.ogg audio/skill/gdsvoice20.ogg audio/skill/gdsvoice21.ogg audio/skill/gdsvoice22.ogg image/fullskin/generals/full/GOD_S.png image/fullskin/generals/full/GOD_0.png image/fullskin/generals/full/GOD_1.png image/fullskin/generals/full/GOD_2.png image/fullskin/generals/full/GOD_3.png image/fullskin/generals/full/GOD_4.png image/fullskin/generals/full/GOD_5.png image/fullskin/generals/full/GOD_6.png image/fullskin/generals/full/GOD_7.png image/fullskin/generals/full/GOD_8.png image/fullskin/generals/full/GOD_9.png image/fullskin/generals/full/GOD_10.png
+20190410:-gv ReZEL -s duilie-2 zhihui-2
