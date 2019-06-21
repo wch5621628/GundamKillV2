@@ -10486,7 +10486,7 @@ yuanjian_range = sgs.CreateTargetModSkill{
 	name = "#yuanjian_range",
 	pattern = "Slash|red",
 	distance_limit_func = function(self, player, card)
-		if card:getSuit() == sgs.Card_Heart or player:getMark("exia_transammark") > 0 then
+		if player and player:hasSkill("yuanjian") and (card:getSuit() == sgs.Card_Heart or player:getMark("exia_transammark") > 0) then
 			return 1
 		end
 	end
