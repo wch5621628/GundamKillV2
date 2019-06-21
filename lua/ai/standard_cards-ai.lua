@@ -395,6 +395,18 @@ function SmartAI:slashIsEffective(slash, to, from, ignore_armor)
 		return true
 	end
 
+	if from:hasSkill("fenniao") and from:getAttackRange() == 2 then
+		return true
+	end
+	
+	if from:hasSkill("jianhun") and slash:isBlack() and from:hasFlag("jianhun-diamond") then
+		return true
+	end
+	
+	if from:hasSkill("yuanjian") and (slash:getSuit() == sgs.Card_Spade or (from:getMark("exia_transammark") > 0 and slash:isBlack())) then
+		return true
+	end
+	
 	if to:hasArmorEffect("renwang_shield") and slash:isBlack() then return false end
 	if to:hasArmorEffect("vine") and (not slash:isKindOf("NatureSlash") or (from:hasSkill("feiniao") and from:getAttackRange() == 1)--[[gundam]]) then
 		local skill_name = slash:getSkillName() or ""

@@ -531,7 +531,7 @@ generalName2BGM = function(name)
 		{"BGM17", "JUSTICE"},
 		{"BGM18", "CFR"},
 		{"BGM19", "PROVIDENCE"},
-		{"BGM20", "EXIA_R"},
+		{"BGM20", "EXIA", "EXIA_R"},
 		{"BGM21", "SBS", "DARK_MATTER"},
 		{"BGM22", "ZETA", "ZETA_WR", "HYAKU_SHIKI"},
 		{"BGM23", "BARBATOS"},
@@ -10397,6 +10397,175 @@ STRIKE_NOIR:addSkill(huantong)
 STRIKE_NOIR:addSkill(huantongc)
 STRIKE_NOIR:addSkill(jianmie)
 
+EXIA = sgs.General(extension, "EXIA", "CB", 4, true, false)
+
+yuanjian = sgs.CreateTriggerSkill{
+	name = "yuanjian",
+	events = {sgs.TargetSpecified},
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local use = data:toCardUse()
+		if use.card and use.card:isKindOf("Slash") then
+		
+			if use.card:getSuit() == sgs.Card_Spade or (player:getMark("exia_transammark") > 0 and use.card:isBlack()) then
+				room:sendCompulsoryTriggerLog(player, self:objectName())
+				local log = sgs.LogMessage()
+				log.type = "#IgnoreArmor"
+				log.from = player
+				log.card_str = use.card:toString()
+				room:sendLog(log)
+				
+				if player:getMark("exia_transammark") == 0 then
+					room:broadcastSkillInvoke(self:objectName(), 1)
+				end
+				
+				for _,p in sgs.qlist(use.to) do
+					if p:getMark("Equips_of_Others_Nullified_to_You") == 0 then
+						p:addQinggangTag(use.card)
+					end
+				end
+			end
+			
+			if use.card:getSuit() == sgs.Card_Heart then
+				room:sendCompulsoryTriggerLog(player, self:objectName())
+				if player:getMark("exia_transammark") == 0 then
+					room:broadcastSkillInvoke(self:objectName(), 2)
+				end
+			end
+			
+			if use.card:getSuit() == sgs.Card_Club or (player:getMark("exia_transammark") > 0 and use.card:isBlack()) then
+				local invoked = false
+				for _,p in sgs.qlist(use.to) do
+					if not p:isKongcheng() then
+						if not invoked then
+							invoked = true
+						end
+						
+						local _data = sgs.QVariant()
+						_data:setValue(p)
+						if not room:askForSkillInvoke(player, self:objectName(), _data) then continue end
+						
+						if player:getMark("exia_transammark") == 0 then
+							room:broadcastSkillInvoke(self:objectName(), 3)
+						else
+							room:broadcastSkillInvoke(self:objectName(), math.random(5, 7))
+						end
+						
+						local id = room:askForCardChosen(player, p, "h", self:objectName())
+						room:throwCard(id, p, player)
+					end
+				end
+			end
+			
+			if use.card:getSuit() == sgs.Card_Diamond or (player:getMark("exia_transammark") > 0 and use.card:isRed()) then
+				local jink_list = sgs.QList2Table(player:getTag("Jink_" .. use.card:toString()):toIntList())
+				for i, p in sgs.qlist(use.to) do
+					if jink_list[i + 1] == 1 then
+						local _data = sgs.QVariant()
+						_data:setValue(p)
+						if not room:askForSkillInvoke(player, self:objectName(), _data) then continue end
+						
+						if player:getMark("exia_transammark") == 0 then
+							room:broadcastSkillInvoke(self:objectName(), 4)
+						else
+							room:broadcastSkillInvoke(self:objectName(), math.random(5, 7))
+						end
+						
+						jink_list[i + 1] = 2
+					end
+				end
+				local jink_data = sgs.QVariant()
+				jink_data:setValue(Table2IntList(jink_list))
+				player:setTag("Jink_" .. use.card:toString(), jink_data)
+			end
+		end
+	end
+}
+
+yuanjian_range = sgs.CreateTargetModSkill{
+	name = "#yuanjian_range",
+	pattern = "Slash|red",
+	distance_limit_func = function(self, player, card)
+		if card:getSuit() == sgs.Card_Heart or player:getMark("exia_transammark") > 0 then
+			return 1
+		end
+	end
+}
+
+EXIA_TRANSAMcard = sgs.CreateSkillCard{
+	name = "exia_transam",
+	target_fixed = true,
+	will_throw = false,
+	on_use = function(self, room, source, targets)
+		source:loseMark("@exia_transam")
+		room:setPlayerMark(source, "exia_transammark", 1)
+		room:broadcastSkillInvoke("gdsbgm", 3)
+		room:doLightbox("image=image/animate/TRANS-AM.png", 1500)
+		
+		if source:getMark("drank") == 0 then --Mask
+			room:addPlayerMark(source, "drank")
+			source:setMark("drank", 0)
+		end
+		
+		room:drawCards(source, 3)
+	end
+}
+
+EXIA_TRANSAMvs = sgs.CreateZeroCardViewAsSkill{
+	name = "exia_transam",
+	view_as = function(self, cards)
+		local acard = EXIA_TRANSAMcard:clone()
+		return acard
+	end,
+	enabled_at_play = function(self, player)
+		return player:getMark("@exia_transam") > 0
+	end
+}
+
+EXIA_TRANSAM = sgs.CreateGameStartSkill{
+	name = "exia_transam",
+	frequency = sgs.Skill_Limited,
+	limit_mark = "@exia_transam",
+	view_as_skill = EXIA_TRANSAMvs,
+	on_gamestart = function(self, player)
+	end
+}
+
+EXIA_TRANSAMslash = sgs.CreateTargetModSkill{
+	name = "#exia_transamslash",
+	pattern = "Slash",
+	residue_func = function(self, player)
+		if player and player:hasUsed("#exia_transam") and player:getMark("exia_transammark") > 0 then
+			return 2
+		else
+			return 0
+		end
+	end
+}
+
+EXIA_TRANSAMmark = sgs.CreateTriggerSkill{
+	name = "#exia_transammark",
+	events = {sgs.EventPhaseChanging},
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if player:getMark("exia_transammark") > 0 then
+			if data:toPhaseChange().to == sgs.Player_NotActive then --Clear mask
+				room:setPlayerMark(player, "drank", 0)
+			elseif data:toPhaseChange().to == sgs.Player_Start then --Limit slash
+				room:setPlayerMark(player, "exia_transammark", 0)
+				room:setPlayerCardLimitation(player, "use", "Slash", true)
+			end
+		end
+	end
+}
+
+EXIA:addSkill(yuanjian)
+EXIA:addSkill(yuanjian_range)
+extension:insertRelatedSkills("yuanjian", "#yuanjian_range")
+EXIA:addSkill(EXIA_TRANSAM)
+EXIA:addSkill(EXIA_TRANSAMslash)
+EXIA:addSkill(EXIA_TRANSAMmark)
+
 EXIA_R = sgs.General(extension, "EXIA_R", "CB", 4, true, false)
 
 liejian = sgs.CreateTriggerSkill{
@@ -14253,6 +14422,30 @@ sgs.LoadTranslationTable{
 	["$jianmie2"] = "今終わる!",
 	["$jianmie3"] = "敵対するものは死ぬ",
 	
+	["EXIA"] = "艾斯亚",
+	["#EXIA"] = "能天使",
+	["~EXIA"] = "エクシアァァァ!",
+	["designer:EXIA"] = "高达杀制作组",
+	["cv:EXIA"] = "刹那·F·塞尔",
+	["illustrator:EXIA"] = "修",
+	["yuanjian"] = "原剑",
+	[":yuanjian"] = "当你使用【杀】时，若此【杀】花色为：<br>\z
+<b>①</b>黑桃：无视防具。<br>\z
+<b>②</b>红桃：攻击范围+1。<br>\z
+<b>③</b>梅花：你可以弃置目标一张手牌。<br>\z
+<b>④</b>方块：你可以令目标使用两张【闪】抵消。",
+	["exia_transam"] = "TRANS-AM",
+	[":exia_transam"] = "<img src=\"image/mark/@exia_transam.png\"><b><font color='red'>限定技，</font></b>出牌阶段，你可以摸三张牌，然后此阶段：你可以额外使用两张【杀】，<b>黑色</b>【杀】可发动<b>“原剑”①③</b>，<b><font color='red'>红色</font></b>【杀】可发动<b>“原剑”②④</b>，你于下个回合不可使用【杀】。",
+	["@exia_transam"] = "TRANS-AM",
+	["$yuanjian1"] = "GNソード!",
+	["$yuanjian2"] = "GNダガー!",
+	["$yuanjian3"] = "GNブレイド!",
+	["$yuanjian4"] = "俺に…触れるな!",
+	["$yuanjian5"] = "違う…!",
+	["$yuanjian6"] = "絶対に違う!",
+	["$yuanjian7"] = "俺が! 俺達が!! ガンダムだ!!",
+	["$exia_transam"] = "トランザム!",
+	
 	["EXIA_R"] = "艾斯亚R",
 	["#EXIA_R"] = "能天使",
 	["liejian"] = "裂剑",
@@ -14584,7 +14777,7 @@ sgs.LoadTranslationTable{
 	["~VVVI"] = "",
 	["designer:VVVI"] = "高达杀制作组",
 	["cv:VVVI"] = "时缟·晴人",
-	["illustrator:VVVI"] = "",
+	--["illustrator:VVVI"] = "",
 	["#VVV"] = "舍弃人类之身",
 	["#VVV:MSG"] = "<center>是否舍弃人类之身?<br>ニンゲンヤメマスカ?<br><font color='#16b1c7'>Do you resign as a human being?</font></center>",
 	["#VVV_mode"] = "%from 进入 %arg",
