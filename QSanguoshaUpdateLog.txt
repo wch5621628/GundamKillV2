@@ -5,4 +5,4 @@
 20190410:-gv ReZEL -s duilie-2 zhihui-2
 20190615:-b BGM37 -g VVVI -k BREAK -m @HITO @VVV_qiefu -o g.json
 20190621:-gv EXIA -mark @exia_transam -s yuanjian-7 exia_transam -o lua/ai/standard_cards-ai.lua
-20190701:-gv X1 -s haidao-4 pifeng-3 kulu-4
+20190701:-gv X1 -s haidao-4 pifeng-3 kulu-4 -o sanguosha.qm
