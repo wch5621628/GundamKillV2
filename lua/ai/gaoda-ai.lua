@@ -1809,7 +1809,11 @@ sgs.ai_skill_use["@@haidao"] = function(self, prompt)
 		end
 	elseif name == "armor" then
 	    self:sort(self.enemies, "hp")
-		return ("#haidaocard:.:->%s"):format(self.enemies[1]:objectName())
+		for _, enemy in ipairs(self.enemies) do
+			if self.player:distanceTo(enemy) == 1 then
+				return ("#haidaocard:.:->%s"):format(enemy:objectName())
+			end
+		end
 	elseif name == "iron_chain" then
 		local acard = sgs.Sanguosha:cloneCard(name, sgs.Card_NoSuit, 0)
 		acard:setSkillName("haidaocard")
