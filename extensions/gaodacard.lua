@@ -281,7 +281,11 @@ Guard_skill = sgs.CreateTriggerSkill{
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		local damage = data:toDamage()
-		if damage.card and (damage.card:isKindOf("Slash") or damage.card:isKindOf("Shoot") and damage.card:objectName() ~= "pierce_shoot") then
+		if damage.card and (damage.card:isKindOf("Slash") or string.find(damage.card:objectName(), "shoot") and damage.card:objectName() ~= "pierce_shoot") then
+			
+			--已挡
+			if damage.card:hasFlag("Guard") then return false end
+			
 			local guard
 			if damage.from then
 				guard = room:askForCard(player, "Guard", "@Guard:"..damage.card:objectName()..":"..damage.from:objectName(), sgs.QVariant(), sgs.Card_MethodUse, damage.from)
@@ -290,7 +294,7 @@ Guard_skill = sgs.CreateTriggerSkill{
 			end
 			if guard then
 				math.random()
-				if (damage.card:isKindOf("Shoot") or math.random(1, 100) <= 70) then
+				if (string.find(damage.card:objectName(), "shoot") or math.random(1, 100) <= 70) then
 					local log = sgs.LogMessage()
 					log.type = "#burstd"
 					log.to:append(damage.to)
@@ -494,6 +498,7 @@ sgs.LoadTranslationTable{
 	<b>效果</b>：被命中的目标角色须打出一张【闪】，否则对其造成1点伤害。",
 	["shoot-jink"] = "%src 使用了【%dest】，请打出一张【闪】",
 	["#shoot_failed"] = "%from 对 %to 使用的 %card 命中失败",
+	["#use_shoot"] = "%from 使用了【%arg】，目标是 %to",
 	
 	["pierce_shoot"] = "贯穿射击",
 	[":pierce_shoot"] = "基本牌\
