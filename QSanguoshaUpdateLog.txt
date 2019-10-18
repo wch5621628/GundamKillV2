@@ -6,4 +6,4 @@
 20190615:-b BGM37 -g VVVI -k BREAK -m @HITO @VVV_qiefu -o g.json
 20190621:-gv EXIA -mark @exia_transam -s yuanjian-7 exia_transam -o lua/ai/standard_cards-ai.lua
 20190701:-gv X1 -s haidao-4 pifeng-3 kulu-4 -o sanguosha.qm
-20191018:-a seshia2-25 -o audio/skill/gdsbgm23.ogg audio/skill/gdsbgm23.ogg
+20191018:-a seshia2-25 -o audio/skill/gdsbgm23.ogg audio/skill/gdsbgm24.ogg
