@@ -442,7 +442,10 @@ GdsVoice = function(player, start)
 	local room = player:getRoom()
 	local emotion = player:property("emotion"):toString()
 	if emotion == "seshia" then
-		if start then
+		if math.random(1, 2) == 2 then --福利动画
+			emotion = "seshia2"
+			room:broadcastSkillInvoke("gdsvoice", math.random(23, 24))
+		elseif start then
 			room:broadcastSkillInvoke("gdsvoice", math.random(1, 4))
 		else
 			room:broadcastSkillInvoke("gdsvoice", math.random(2, 4))
@@ -5470,7 +5473,7 @@ haidao = sgs.CreateTriggerSkill
 					room:setPlayerProperty(player, "haidao", sgs.QVariant(list[n]))
 					room:askForUseCard(player, "@@haidao", "#haidao" .. n) -- lua/ai/smart-ai.lua:4718: attempt to index local 'skill_card' (a nil value)
 					room:setPlayerProperty(player, "haidao", sgs.QVariant())
-				elseif use.card:isKindOf("Armor") then
+				elseif use.card:isKindOf("Armor") then --BUG:EPYON triggers this twice?
 					room:setPlayerProperty(player, "haidao", sgs.QVariant("armor"))
 					room:askForUseCard(player, "@@haidao", "#haidao3")
 					room:setPlayerProperty(player, "haidao", sgs.QVariant())
