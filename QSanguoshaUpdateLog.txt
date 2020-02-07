@@ -7,3 +7,4 @@
 20190621:-gv EXIA -mark @exia_transam -s yuanjian-7 exia_transam -o lua/ai/standard_cards-ai.lua
 20190701:-gv X1 -s haidao-4 pifeng-3 kulu-4 -o sanguosha.qm
 20191018:-a seshia2-25 -o audio/skill/gdsvoice23.ogg audio/skill/gdsvoice24.ogg
+20200207:-gv AKATSUKI_OOWASHI -s bachi-4 dajiu-4
