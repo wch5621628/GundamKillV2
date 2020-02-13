@@ -402,12 +402,15 @@ gdsrule = sgs.CreateTriggerSkill{
 		if death.who:objectName() == player:objectName() then
 			if death.damage and death.damage.from and (string.find(death.damage.from:getGeneralName(), "FREEDOM") or string.find(death.damage.from:getGeneral2Name(), "FREEDOM")) then
 				if string.find(death.who:getGeneralName(), "PROVIDENCE") or string.find(death.who:getGeneral2Name(), "PROVIDENCE") then
+					-- 联动图片：自由击破天意
 					room:doLightbox("image=image/animate/FREEDOM_PROVIDENCE.png", 1000)
 				elseif string.find(death.who:getGeneralName(), "SAVIOUR") or string.find(death.who:getGeneral2Name(), "SAVIOUR") then
+					-- 联动图片：自由击破救世主
 					room:doLightbox("image=image/animate/FREEDOM_SAVIOUR.png", 1000)
 				end
 			elseif ((death.damage and death.damage.from and (string.find(death.damage.from:getGeneralName(), "IMPULSE") or string.find(death.damage.from:getGeneral2Name(), "IMPULSE"))) or death.who:hasFlag("IMPULSE_FREEDOM"))
 				and (string.find(death.who:getGeneralName(), "FREEDOM") or string.find(death.who:getGeneral2Name(), "FREEDOM")) then
+				-- 联动图片：脉冲击破自由
 				room:doLightbox("image=image/animate/IMPULSE_FREEDOM.png", 1000)
 			end
 			if file_exists("image/generals/card/"..death.who:getGeneralName()..".jpg") then
@@ -528,7 +531,7 @@ generalName2BGM = function(name)
 		{"BGM10", "FREEDOM", "FREEDOM_D"},
 		{"BGM11", "WZ", "EPYON"},
 		{"BGM12", "WZC", "DSH", "HAC", "SANDROCK", "ALTRON"},
-		{"BGM13", "GINN", "STRIKE", "AEGIS", "BUSTER", "DUEL_AS", "BLITZ", "BLITZ_Y"},
+		{"BGM13", "GINN", "STRIKE", "AEGIS", "BUSTER", "DUEL_AS", "BLITZ", "BLITZ_Y", "PERFECT_STRIKE"},
 		{"BGM14", "REBORNS_CANNON", "REBORNS_GUNDAM"},
 		{"BGM15", "EX_S"},
 		{"BGM16", "DX"},
@@ -6507,12 +6510,14 @@ ew_lingshi = sgs.CreateTriggerSkill{
 				end
 			end
 			if sp_voice == 1 then
+				-- 联动语音：艾比安
 			    room:broadcastSkillInvoke("qishi",3)
 				--room:getThread():delay(2400)
 				room:doSuperLightbox("WZC", self:objectName())
 				room:broadcastSkillInvoke("ew_lingshi",8)
 				room:broadcastSkillInvoke("ew_lingshi",7)
 			elseif sp_voice == 2 then
+				-- 联动语音：双头龙改
 			    room:broadcastSkillInvoke("ew_lingshi", 9)
 				--room:getThread():delay(3000)
 				room:doSuperLightbox("WZC", self:objectName())
@@ -7680,8 +7685,9 @@ juexin = sgs.CreateTriggerSkill
 		local use = data:toCardUse()
 		if use.card and use.card:getSkillName() == self:objectName() then
 			local to = use.to:first()
-			if string.find(to:getGeneralName(), "STRIKE") or string.find(to:getGeneralName(), "FREEDOM") or string.find(to:getGeneralName(), "SF")
-				or string.find(to:getGeneral2Name(), "STRIKE") or string.find(to:getGeneral2Name(), "FREEDOM") or string.find(to:getGeneral2Name(), "SF") then
+			if to:getGeneralName() == "STRIKE" or string.find(to:getGeneralName(), "FREEDOM") or string.find(to:getGeneralName(), "SF")
+				or to:getGeneral2Name() == "STRIKE" or string.find(to:getGeneral2Name(), "FREEDOM") or string.find(to:getGeneral2Name(), "SF") then
+				-- 联动语音：基拉机
 				room:broadcastSkillInvoke(self:objectName(), 2)
 				room:getThread():delay(1500)
 				room:broadcastSkillInvoke(self:objectName(), 1)
@@ -8088,6 +8094,7 @@ jiaoxie = sgs.CreateTriggerSkill{
 					local choice = room:askForChoice(p, self:objectName(), table.concat(skill_list, "+"), data)
 					if choice then
 						if string.find(target:getGeneralName(), "PROVIDENCE") or string.find(target:getGeneral2Name(), "PROVIDENCE") then
+							-- 联动语音：天意
 							room:broadcastSkillInvoke(self:objectName(), 3)
 						else
 							room:broadcastSkillInvoke(self:objectName(), math.random(1, 2))
@@ -8460,6 +8467,180 @@ liesha = sgs.CreateTriggerSkill
 CFR:addSkill(wenshen)
 CFR:addSkill(jinduan)
 CFR:addSkill(liesha)
+
+PERFECT_STRIKE = sgs.General(extension, "PERFECT_STRIKE", "OMNI", 4, true, false)
+
+quanyu = sgs.CreateTriggerSkill
+{
+	name = "quanyu",
+	events = {sgs.EventPhaseStart, sgs.TargetSpecified, sgs.CardFinished},
+	can_trigger = function(self, player)
+		return player and player:isAlive() and player:hasSkill(self:objectName()) and player:getMark("@battery") > 0
+	end,
+    on_trigger = function(self, event, player, data)
+	    local room = player:getRoom()
+		if event == sgs.EventPhaseStart then
+			if (player:getPhase() == sgs.Player_Start or player:getPhase() == sgs.Player_Finish) and room:askForSkillInvoke(player, self:objectName(), sgs.QVariant("A")) then
+				room:broadcastSkillInvoke(self:objectName(), math.random(1, 2))
+				
+				local log = sgs.LogMessage()
+				log.type = "#quanyu_A"
+				log.arg = self:objectName()
+				room:sendLog(log)
+				
+				if player:hasSkill("dianhao") then
+					player:loseMark("@battery")
+				end
+				player:drawCards(1)
+				if not room:askForUseCard(player, "slash", "@quanyu_A1") and not player:isKongcheng() then
+					room:askForDiscard(player, self:objectName(), 1, 1, false, false)
+				end
+			end
+		elseif event == sgs.TargetSpecified then
+			local use = data:toCardUse()
+			if use.card and use.card:isKindOf("Slash") then
+				for _, p in sgs.qlist(use.to) do
+					if room:askForSkillInvoke(player, self:objectName(), sgs.QVariant("S:" .. p:objectName())) then						
+						local choice
+						
+						local _data = sgs.QVariant()
+						_data:setValue(p)
+						player:setTag("quanyu_S", _data)
+						
+						if p:isNude() then
+							choice = room:askForChoice(player, self:objectName(), "quanyu_S1+cancel", data)
+						else
+							choice = room:askForChoice(player, self:objectName(), "quanyu_S1+quanyu_S2+cancel", data)
+						end
+						
+						if choice ~= "cancel" then
+							if p:getGeneralName() == "PROVIDENCE" or p:getGeneral2Name() == "PROVIDENCE" then
+								-- 联动语音：天意
+								room:broadcastSkillInvoke(self:objectName(), 7)
+							else
+								room:broadcastSkillInvoke(self:objectName(), math.random(3, 4))
+							end
+						end
+						
+						local log = sgs.LogMessage()
+						log.type = "#" .. choice
+						log.from = player
+						log.to:append(p)
+						log.arg = self:objectName()
+						log.card_str = use.card:toString()
+						room:sendLog(log)
+						
+						player:setTag("quanyu_S", sgs.QVariant())
+						
+						if choice == "quanyu_S1" then
+							if player:hasSkill("dianhao") then
+								player:loseMark("@battery")
+							end
+							room:setCardFlag(use.card, "quanyu_S1: " .. p:objectName())
+						elseif choice == "quanyu_S2" then
+							if player:hasSkill("dianhao") then
+								player:loseMark("@battery")
+							end
+							local id_throw = room:askForCardChosen(player, p, "he", self:objectName())
+							room:throwCard(id_throw, p, player)
+						end
+					end
+				end
+			end
+		else
+			local use = data:toCardUse()
+			if use.card and use.card:isKindOf("EquipCard") and not player:hasFlag("quanyu_L1") and not player:hasFlag("quanyu_L2") and room:askForSkillInvoke(player, self:objectName(), sgs.QVariant("L")) then
+				if player:hasSkill("dianhao") then
+					player:loseMark("@battery")
+				end
+				player:drawCards(1)
+				local choice = room:askForChoice(player, self:objectName(), "quanyu_L1+quanyu_L2", data)
+				if choice then
+					room:broadcastSkillInvoke(self:objectName(), math.random(5, 6))
+				
+					local log = sgs.LogMessage()
+					log.type = "#" .. choice
+					log.from = player
+					log.arg = self:objectName()
+					room:sendLog(log)
+					
+					room:setPlayerFlag(player, choice)
+				end
+			end
+		end
+    end
+}
+
+quanyu_damage = sgs.CreateTriggerSkill
+{
+	name = "#quanyu_damage",
+	events = {sgs.DamageCaused},
+	global = true,
+	can_trigger = function(self, player)
+		return true
+	end,
+    on_trigger = function(self, event, player, data)
+	    local room = player:getRoom()
+		local damage = data:toDamage()
+		if damage.chain or damage.transfer or (not damage.by_user) then return false end
+		if damage.card and damage.card:isKindOf("Slash") and damage.card:hasFlag("quanyu_S1: " .. damage.to:objectName()) then
+			local log = sgs.LogMessage()
+			log.type = "#tiexuedamage"
+			log.from = player
+			log.to:append(damage.to)
+			log.card_str = damage.card:toString()
+			log.arg = damage.damage
+			log.arg2 = damage.damage + 1
+			room:sendLog(log)
+			damage.damage = damage.damage + 1
+			data:setValue(damage)
+		end
+    end
+}
+
+quanyu_range = sgs.CreateAttackRangeSkill{
+	name = "#quanyu_range",
+	extra_func = function(self, player, include_weapon)
+		if player and player:hasFlag("quanyu_L1") then
+			return 1
+		end
+	end
+}
+quanyu_slash = sgs.CreateTargetModSkill{
+	name = "#quanyu_slash",
+	pattern = "Slash",
+	residue_func = function(self, player)
+		if player and player:hasFlag("quanyu_L2") then
+			return 1
+		else
+			return 0
+		end
+	end
+}
+
+dianhao = sgs.CreateTriggerSkill{
+	name = "dianhao",
+	events = {sgs.GameStart, sgs.HpRecover},
+	frequency = sgs.Skill_Compulsory,
+	on_trigger = function(self, event, player, data)
+        local room = player:getRoom()
+		if event == sgs.GameStart then
+			if player:getMark("@battery") == 0 then
+				player:gainMark("@battery", 5)
+			end
+		else
+			local recover = data:toRecover()
+			room:sendCompulsoryTriggerLog(player, self:objectName())
+			player:gainMark("@battery", math.min(recover.recover, 5 - player:getMark("@battery")))
+		end
+	end
+}
+
+PERFECT_STRIKE:addSkill(quanyu)
+PERFECT_STRIKE:addSkill(quanyu_damage)
+PERFECT_STRIKE:addSkill(quanyu_range)
+PERFECT_STRIKE:addSkill(quanyu_slash)
+PERFECT_STRIKE:addSkill(dianhao)
 
 PROVIDENCE = sgs.General(extension, "PROVIDENCE", "ZAFT", 4, true, false)
 
@@ -8912,6 +9093,7 @@ xinnian = sgs.CreateTriggerSkill
 	name = "xinnian",
 	events = {sgs.EventPhaseChanging, sgs.DamageInflicted},
 	frequency = sgs.Skill_Compulsory,
+	priority = -2, -- Invoke after Guard
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		if event == sgs.EventPhaseChanging then
@@ -8956,12 +9138,14 @@ xinnian = sgs.CreateTriggerSkill
 				or string.find(damage.from:getGeneral2Name(), "SAVIOUR") or string.find(damage.from:getGeneral2Name(), "IJ"))
 				and (not room:getTag("xinnian_voice"):toBool()) then
 				room:setTag("xinnian_voice", sgs.QVariant(true))
+				-- 联动语音：亚斯兰机
 				room:broadcastSkillInvoke(self:objectName(), 3)
 			else
 				room:broadcastSkillInvoke(self:objectName(), math.random(1, 2))
 			end
 			room:sendCompulsoryTriggerLog(player, self:objectName())
 			if damage.from and string.find(damage.from:getGeneralName(), "IMPULSE") or string.find(damage.from:getGeneral2Name(), "IMPULSE") then --For death special scene use only
+				-- 联动图片：脉冲
 				room:setPlayerFlag(player, "IMPULSE_FREEDOM")
 				room:loseHp(player)
 				room:setPlayerFlag(player, "-IMPULSE_FREEDOM")
@@ -13063,9 +13247,13 @@ tiexue = sgs.CreateTriggerSkill{
 tiexuemark = sgs.CreateTriggerSkill{
 	name = "#tiexuemark",
 	events = {sgs.TurnStart, sgs.DamageCaused},
+	global = true,
+	can_trigger = function(self, player)
+		return player and player:getMark("tiexue") > 0
+	end,
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		if player:getMark("tiexue") == 0 then return false end
+		-- if player:getMark("tiexue") == 0 then return false end
 		if event == sgs.TurnStart then
 			room:removePlayerMark(player, "tiexue")
 		else
@@ -13094,7 +13282,7 @@ BARBATOS:addSkill(ejih)
 BARBATOS:addSkill(tiexue)
 BARBATOS:addSkill(tiexuemark)
 extension:insertRelatedSkills("eji", "#ejih")
-extension:insertRelatedSkills("tiexue", "#tiexuemark")
+-- extension:insertRelatedSkills("tiexue", "#tiexuemark")
 
 LUPUS = sgs.General(extension, "LUPUS", "TEKKADAN", 4, true, false)
 
@@ -14595,6 +14783,41 @@ sgs.LoadTranslationTable{
 	["$liesha1"] = "そりゃー、滅殺!!",
 	["$liesha2"] = "でりゃー、必殺!!",
 	
+	["PERFECT_STRIKE"] = "完美突击",
+	["#PERFECT_STRIKE"] = "恩底弥翁之鹰",
+	["~PERFECT_STRIKE"] = "切~这战力差，无能为力吗？",
+	["designer:PERFECT_STRIKE"] = "高达杀制作组",
+	["cv:PERFECT_STRIKE"] = "穆·拉·弗拉加",
+	["illustrator:PERFECT_STRIKE"] = "wch5621628",
+	["quanyu"] = "全域",
+	[":quanyu"] = "若你拥有<b>“电池”</b>标记，你可发动以下效果：\
+<font color='#aa3845'>❶</font>准备或结束阶段开始时，你可以摸一张牌并选择一项：1.使用一张【杀】；2.弃置一张手牌。<font color='#aa3845'>&lt;翔翼&gt;</font>\
+<font color='#6678c9'>❷</font>当你使用【杀】指定目标后，你可以选择一项：1.此【杀】对其造成的伤害+1；2.弃置其一张牌。<font color='#6678c9'>&lt;巨剑&gt;</font>\
+<font color='#393f15'>❸</font>出牌阶段限一次，当你使用装备牌后，你可以摸一张牌并选择一项：1.此回合攻击范围+1；2.此阶段可额外使用一张【杀】。<font color='#393f15'>&lt;重砲&gt;</font>",
+	["quanyu:A"] = "你想发动技能“全域” - <span style=\"background-color: white\"><font color='#aa3845'>&lt;翔翼&gt;</font></span>吗？",
+	["@quanyu_A1"] = "请使用一张【杀】，或点击取消以弃置一张手牌",
+	["quanyu:S"] = "你想对 %src 发动技能“全域” - <span style=\"background-color: white\"><font color='#6678c9'>&lt;巨剑&gt;</font></span>吗？",
+	["quanyu_S1"] = "此【杀】对其造成的伤害+1",
+	["quanyu_S2"] = "弃置其一张牌",
+	["quanyu:L"] = "你想发动技能“全域” - <span style=\"background-color: white\"><font color='#393f15'>&lt;重砲&gt;</font></span>吗？",
+	["quanyu_L1"] = "此回合攻击范围+1",
+	["quanyu_L2"] = "此阶段可额外使用一张【杀】",
+	["dianhao"] = "电耗",
+	[":dianhao"] = "<img src=\"image/mark/@battery.png\"><b><font color='blue'>锁定技，</font></b>游戏开始时，你获得5个<b>“电池”</b>标记；当你发动<b>“全域”</b>时，你失去1个<b>“电池”</b>；当你回复1点体力时，你获得1个<b>“电池”</b>（至多5个）。",
+	["@battery"] = "电池",
+	["#quanyu_A"] = "“%arg” - <span style=\"background-color: white\"><font color='#aa3845'>&lt;翔翼&gt;</font></span>",
+	["#quanyu_S1"] = "“%arg” - <span style=\"background-color: white\"><font color='#6678c9'>&lt;巨剑&gt;</font></span>：%card 对 %to 造成的伤害+1",
+	["#quanyu_S2"] = "“%arg” - <span style=\"background-color: white\"><font color='#6678c9'>&lt;巨剑&gt;</font></span>：%from 弃置 %to 一张牌",
+	["#quanyu_L1"] = "“%arg” - <span style=\"background-color: white\"><font color='#393f15'>&lt;重砲&gt;</font></span>：%from 此回合攻击范围+1",
+	["#quanyu_L2"] = "“%arg” - <span style=\"background-color: white\"><font color='#393f15'>&lt;重砲&gt;</font></span>：%from 此阶段可额外使用一张【杀】",
+	["$quanyu1"] = "呜→哮↗",
+	["$quanyu2"] = "我从未听过我会被打败。",
+	["$quanyu3"] = "你这家伙很难缠唷！",
+	["$quanyu4"] = "这就是你这家伙的目的吗！",
+	["$quanyu5"] = "我可是化不可能为可能的男人呢。",
+	["$quanyu6"] = "这次一定要解决掉。",
+	["$quanyu7"] = "你这家伙……是劳·鲁·克鲁泽啊！",
+	
 	["longqi"] = "龙骑",
 	["@longqi"] = "请观看一名其他角色的手牌并弃置其中一张<br>【闪】点数=%src<br>弃置点数%src的牌：对其造成1点伤害<br>弃置点数差为1的牌：重复此流程",
 	[":longqi"] = "当你使用或打出一张【闪】时，你可以：观看一名其他角色的手牌并弃置其中一张，若此牌与【闪】的点数相同，你对其造成1点伤害；若点数差为1，你可以重复此流程。",
@@ -14746,14 +14969,14 @@ sgs.LoadTranslationTable{
 	["AKATSUKI_OOWASHI"] = "晓 大鹫",
 	["#AKATSUKI_OOWASHI"] = "黄金的意志",
 	["~AKATSUKI_OOWASHI"] = "地球军的新型机动兵器……父亲你这个叛徒！",
-	["designer:AKATSUKI_OOWASHI"] = "wch5621628 & Sankies & NOS7IM",
+	["designer:AKATSUKI_OOWASHI"] = "高达杀制作组",
 	["cv:AKATSUKI_OOWASHI"] = "卡嘉莲·由拉·阿斯哈",
 	["illustrator:AKATSUKI_OOWASHI"] = "wch5621628",
 	["dajiu"] = "大鹫",
 	[":dajiu"] = "当你受到1点伤害后，你可以摸一张牌并展示之，若为基本牌，你弃置伤害来源一张牌；弃牌阶段开始时，你可以使用一张【杀】，若为<b><font color='red'>红色</font></b>，你可额外指定一个目标；你与其他角色的距离-1。",
 	["@dajiu_slash"] = "你可以使用一张【杀】，若为<b><font color='red'>红色</font></b>，你可额外指定一个目标",
-	["$bachi3"] = "我也可以",
-	["$bachi4"] = "现在怎能再让你们为所欲为",
+	["$bachi3"] = "我也可以……",
+	["$bachi4"] = "现在怎能再让你们为所欲为。",
 	["$dajiu1"] = "可恶……你们！",
 	["$dajiu2"] = "不可以逃避！活下去也是一种战斗！",
 	["$dajiu3"] = "去吧！",

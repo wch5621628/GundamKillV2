@@ -2992,6 +2992,45 @@ sgs.ai_skill_invoke.liesha = function(self, data)
 	return true
 end
 
+--完美突击
+sgs.ai_skill_invoke.quanyu = function(self, data)
+	local prompt = data:toString()
+	if prompt == "A" then
+		return self:getCardsNum("Slash") > 0 or (self.player:getHp() == 1 and self:getCardsNum("Jink") + self:getCardsNum("Peach") + self:getCardsNum("Analeptic") + self:getCardsNum("Guard") == 0)
+	elseif prompt:startsWith("S") then
+		local name = prompt:split(":")[2]
+		local target = findPlayerByObjectName(self.room, name)
+		return self:isEnemy(target)
+	elseif prompt == "L" then
+		return true
+	end
+	return true
+end
+
+sgs.ai_skill_choice.quanyu = function(self, choices, data)
+	choices = choices:split("+")
+	local use = data:toCardUse()
+	if choices[1] == "quanyu_S1" then
+		local enemy = self.player:getTag("quanyu_S"):toPlayer()
+		if self:isFriend(enemy) then
+			return "cancel"
+		end
+		if self:slashIsEffective(use.card, enemy) and (getCardsNum("Jink", enemy) < 1 or (self.player:hasWeapon("axe") and self.player:getCards("he"):length() > 4)) then
+			return choices[1]
+		else
+			return choices[2]
+		end
+	elseif choices[1] == "quanyu_L1" then
+		for _, enemy in ipairs(self.enemies) do
+			if self.player:inMyAttackRange(enemy) then
+				return choices[2]
+			end
+		end
+		return choices[1]
+	end
+	return choices[1]
+end
+
 --天意
 sgs.ai_skill_playerchosen.longqi = function(self, targets)
 	targets = sgs.QList2Table(targets)
