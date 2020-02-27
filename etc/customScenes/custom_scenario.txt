@@ -1,4 +1,4 @@
 
-setPile:0
-general:IJ role:rebel draw:0 hand:269 
-general:DESTINY role:lord starter:true draw:0 hand:11 
+general:BYARLANT_C role:lord starter:true 
+general:select role:rebel 
+general:select role:rebel 

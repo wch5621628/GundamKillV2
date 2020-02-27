@@ -28,6 +28,10 @@ function SmartAI:useCardShoot(card, use)
 			use.to:append(enemy)
 			if use.to:length() >= tar + sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget, self.player, card) then return end
 		end
+		--如果没有有效目标，则不空发射击
+		if use.to:isEmpty() then
+			use.card = nil
+		end
 	end
 end
 

@@ -162,6 +162,40 @@ end
 sgs.ai_use_value["burstp"] = 10
 sgs.ai_use_priority["burstp"] = 10
 
+local bursts_skill={}
+bursts_skill.name="bursts"
+table.insert(sgs.ai_skills,bursts_skill)
+bursts_skill.getTurnUseCard=function(self,inclusive)
+    if self.player:getMark("@bursts") == 1 and self.player:getMark("bursts") == 0 then
+		local card_str = ("#bursts:.:")
+		return sgs.Card_Parse(card_str)
+	end
+end
+
+sgs.ai_skill_use_func["#bursts"]=function(card, use, self)
+	use.card = card
+end
+
+sgs.ai_use_value["bursts"] = 10
+sgs.ai_use_priority["bursts"] = 10
+
+local burstj_skill={}
+burstj_skill.name="burstj"
+table.insert(sgs.ai_skills,burstj_skill)
+burstj_skill.getTurnUseCard=function(self,inclusive)
+    if self.player:getMark("@burstj") == 1 and self.player:getMark("burstj") == 0 then
+		local card_str = ("#burstj:.:")
+		return sgs.Card_Parse(card_str)
+	end
+end
+
+sgs.ai_skill_use_func["#burstj"]=function(card, use, self)
+	use.card = card
+end
+
+sgs.ai_use_value["burstj"] = 10
+sgs.ai_use_priority["burstj"] = 10
+
 --AI换肤
 local skin_skill={}
 skin_skill.name="skin"
@@ -1339,6 +1373,146 @@ end
 sgs.ai_use_value["tupo"] = sgs.ai_use_value.Collateral
 sgs.ai_use_priority["tupo"] = sgs.ai_use_priority.Collateral
 
+--杰斯塔
+function Set(list)
+	local set = {}
+	for _, l in ipairs(list) do set[l] = true end
+	return set
+end
+
+function shuffle(tbl)
+	math.randomseed(os.time())
+	for i = #tbl, 2, -1 do
+		local j = math.random(i)
+		tbl[i], tbl[j] = tbl[j], tbl[i]
+	end
+	return tbl
+end
+
+sgs.ai_skill_use["@@zhanshi"] = function(self, prompt)
+	local tricks = {"snatch", "dismantlement", "collateral", "ex_nihilo", "duel", --[["amazing_grace",]] "savage_assault", "archery_attack", "god_salvation"}
+	if not (Set(sgs.Sanguosha:getBanPackages()))["maneuvering"] then
+		table.insert(tricks, "fire_attack")
+		table.insert(tricks, "iron_chain")
+	end
+	if not (Set(sgs.Sanguosha:getBanPackages()))["gaodacard"] then
+		table.insert(tricks, "tactical_combo")
+	end
+	
+	shuffle(tricks)
+	
+	for _, trick in ipairs(tricks) do
+		local qicecard = sgs.Sanguosha:cloneCard(trick)
+		qicecard:setSkillName("zhanshi")
+		
+		if self.player:isCardLimited(qicecard, sgs.Card_MethodUse, true) or not qicecard:isAvailable(self.player) then continue end
+		
+		local use = sgs.CardUseStruct()
+		self:useTrickCard(qicecard, use)
+		if use.card then
+			--禁止重铸
+			if qicecard:canRecast() and use.to:isEmpty() then continue end
+			--是否使用桃园结义
+			if trick == "god_salvation" and not self:willUseGodSalvation(qicecard) then continue end
+			
+			if use.to then
+				--与其战术连携摸一张牌，倒不如无中生有摸两张牌
+				if trick == "tactical_combo" and use.to:length() == 1 and use.to:contains(self.player) and self:getCardsNum("Slash") == 0 then continue end
+				
+				local targets = {}
+				for _, p in sgs.qlist(use.to) do
+					table.insert(targets, p:objectName())
+				end
+				return ("%s:zhanshi[no_suit:0]=.->%s"):format(trick, table.concat(targets, "+"))
+			end
+			
+			return ("%s:zhanshi[no_suit:0]=."):format(trick)
+		end
+	end
+	
+	return "."
+end
+
+sgs.ai_skill_choice.zhanshi = function(self, choices, data)
+	local choice = choices:split("+")
+	return choice[math.random(1, #choice)]
+end
+
+sgs.zhanshi_suit_value = {
+	spade = 3,
+	club = 3
+}
+
+function sgs.ai_cardneed.anzhang(to, card)
+	return card:isBlack() and card:isKindOf("BasicCard")
+end
+
+--拜亚兰改
+sgs.ai_skill_use["@@zhenya"] = function(self, prompt)
+    self:updatePlayers()
+	self:sort(self.enemies, "handcard")
+	if self.player:getHandcardNum() <= 1 or self.player:getHp() <= 1 then return "." end
+	if (self.player:containsTrick("indulgence") or self.player:containsTrick("supply_shortage")) and self:getCardsNum("Nullification") == 0 then return "." end
+	if #self.enemies > 1 then
+		return ("#zhenya:.:->%s+%s"):format(self.enemies[1]:objectName(), self.enemies[2]:objectName())
+	elseif #self.enemies == 1 and #self.friends_noself > 0 then
+		for _, friend in ipairs(self.friends_noself) do
+			local card = sgs.Sanguosha:cloneCard("dismantlement")
+			if self:hasTrickEffective(card, friend, self.player) then
+				if friend:containsTrick("indulgence") or friend:containsTrick("supply_shortage") then
+					return ("#zhenya:.:->%s+%s"):format(self.enemies[1]:objectName(), friend:objectName())
+				end
+			end
+		end
+	end
+	return "."
+end
+
+sgs.ai_skill_invoke.zhenya = function(self, data)
+    local prompt = data:toString():split(":")
+	local target = findPlayerByObjectName(self.room, prompt[2])
+	if self:isFriend(target) then
+		if table.contains(prompt, "dismantlement") then
+			local card = sgs.Sanguosha:cloneCard("dismantlement")
+			if self:hasTrickEffective(card, target, self.player) then
+				if target:containsTrick("indulgence") or target:containsTrick("supply_shortage") then
+					return true
+				end
+			end
+		end
+	else
+		for i = 3, #prompt do
+			local card = sgs.Sanguosha:cloneCard(prompt[i])
+			if self:hasTrickEffective(card, target, self.player) then
+				return true
+			end
+		end
+	end
+	return false
+end
+
+sgs.ai_skill_choice.zhenya = function(self, choices, data)
+	choices = choices:split("+")
+	local target = data:toPlayer()
+	for _, choice in ipairs(choices) do
+		if self:isFriend(target) and choice ~= "dismantlement" then continue end
+		local card = sgs.Sanguosha:cloneCard(choice)
+		if self:hasTrickEffective(card, target, self.player) then
+			return choice
+		end
+	end
+	return choices[1]
+end
+
+sgs.ai_skill_invoke.quzhu = function(self, data)
+    local prompt = data:toString():split(":")
+	local target = findPlayerByObjectName(self.room, prompt[2])
+	if self:isEnemy(target) then
+		return true
+	end
+	return false
+end
+
 --黑独角兽
 sgs.ai_skill_invoke.mengshi = function(self, data)
     local use = data:toCardUse()
@@ -2042,7 +2216,7 @@ shenzhang_skill.getTurnUseCard = function(self, inclusive)
 			if self.player:inMyAttackRange(enemy) then
 				local cards = self.player:getCards("he")
 				cards = sgs.QList2Table(cards)
-				self:sortByUseValue(cards)
+				self:sortByUseValue(cards, true)
 				for _,card in ipairs(cards) do
 					if card:getSuit() == sgs.Card_Heart and not (isCard("Peach", card, self.player) and self:getCardsNum("Peach") == 1) and not isCard("ExNihilo", card, self.player) then
 						return sgs.Card_Parse("#shenzhang:.:")
@@ -2059,7 +2233,7 @@ sgs.ai_skill_use_func["#shenzhang"] = function(card, use, self)
 		if self.player:inMyAttackRange(enemy) then
 			local cards = self.player:getCards("he")
 			cards = sgs.QList2Table(cards)
-			self:sortByUseValue(cards)
+			self:sortByUseValue(cards, true)
 			for _,card in ipairs(cards) do
 				if card:getSuit() == sgs.Card_Heart and not (isCard("Peach", card, self.player) and self:getCardsNum("Peach") == 1) and not isCard("ExNihilo", card, self.player) then
 					use.card = sgs.Card_Parse("#shenzhang:"..card:getId()..":")
@@ -2159,6 +2333,308 @@ function sgs.ai_cardneed.shenzhang(to, card)
 	return card:getSuit() == sgs.Card_Heart
 end
 
+--尊者
+sgs.ai_skill_cardask["@anzhang"] = function(self)
+	local cards = self.player:getCards("he")
+	cards = sgs.QList2Table(cards)
+	self:sortByUseValue(cards, true)
+	
+	for _,card in ipairs(cards) do
+		if card:getSuit() == sgs.Card_Spade then
+			return card:getEffectiveId()
+		end
+	end
+	
+	return "."
+end
+
+sgs.ai_skill_cardask["@@anzhang"] = function(self, data)
+	local shanguang = sgs.ai_skill_cardask["@@shanguang"]
+	return shanguang(self, data)
+end
+
+sgs.anzhang_suit_value = {
+	spade = 3.9
+}
+
+function sgs.ai_cardneed.anzhang(to, card)
+	return card:getSuit() == sgs.Card_Spade
+end
+
+-- 子集和问题
+-- C++ -> LUA 翻译：水餃wch哥（wch5621628）
+
+-- Reference: https://www.geeksforgeeks.org/perfect-sum-problem-print-subsets-given-sum/
+
+-- LUA program to count all subsets with 
+-- given sum. 
+
+-- k = -1 => get ALL solutions
+-- otherwise => get at most k solutions
+-- Return a string table, e.g. {"1+2+3+4", "1+9"}
+function perfectSum(numbers, sum, k)
+	local subsets = {}
+	-- dp[i][j] is going to store true if sum j is 
+	-- possible with array elements from 0 to i. 
+	local dp
+	
+	function display(v)
+		local ans = ""
+		for i = 1, #v do
+			ans = ans .. v[i]
+			if i < #v then
+				ans = ans .. "+"
+			end
+		end
+		--print(ans)
+		table.insert(subsets, ans)
+	end
+	
+	-- A recursive function to print all subsets with the 
+	-- help of dp[][]. Vector p[] stores current subset. 
+	function printSubsetsRec(arr, i, sum, p)
+		-- If we reached end and sum is non-zero. We print 
+		-- p[] only if arr[0] is equal to sun OR dp[0][sum] 
+		-- is true. 
+		if (i == 0 and sum ~= 0 and dp[0][sum]) then
+			table.insert(p, arr[i])
+			display(p)
+			return
+		end
+	
+		-- If sum becomes 0 
+		if (i == 0 and sum == 0) then
+			display(p)
+			return
+		end
+
+		-- At most k solutions
+		if (k ~= -1 and #subsets == k) then
+			return
+		end
+
+		-- If given sum can be achieved after ignoring 
+		-- current element. 
+		if (dp[i-1][sum]) then
+			--- Create a new vector to store path 
+			local b = {}
+			for k, v in ipairs(p) do
+				b[k] = v
+			end
+			printSubsetsRec(arr, i-1, sum, b)
+		end
+	
+		-- If given sum can be achieved after considering 
+		-- current element. 
+		if (sum >= arr[i] and dp[i-1][sum-arr[i]]) then
+			table.insert(p, arr[i])
+			printSubsetsRec(arr, i-1, sum-arr[i], p)
+		end
+	end
+	
+	-- Prints all subsets of arr[0..n-1] with sum 0. 
+	function printAllSubsets(arr, n, sum)
+		if (n == 0 or sum < 0) then
+		   return
+		end
+	
+		-- Sum 0 can always be achieved with 0 elements 
+		dp = {}
+		for i = 0, n - 1 do
+			dp[i] = {}
+			dp[i][0] = true
+		end
+	
+		-- Sum arr[0] can be achieved with single element 
+		if (arr[0] <= sum) then
+		   dp[0][arr[0]] = true
+		end
+	
+		-- Fill rest of the entries in dp[][] 
+		for i = 1, n - 1 do
+			for j = 0, sum do
+				if (arr[i] <= j) then
+					dp[i][j] = dp[i-1][j] or dp[i-1][j-arr[i]]
+				else
+					dp[i][j] = dp[i - 1][j]
+				end
+			end
+		end
+		if (dp[n-1][sum] == false) then
+			--print("There are no subsets with sum " .. sum .. "\n")
+			return
+		end
+	
+		-- Now recursively traverse dp[][] to find all 
+		-- paths from dp[n-1][sum] 
+		local p = {}
+		printSubsetsRec(arr, n-1, sum, p)
+	end
+	
+	local n = #numbers
+	local arr = {}
+	for i = 0, n - 1 do
+	   arr[i] = numbers[i + 1] 
+	end
+	printAllSubsets(arr, n, sum)
+	
+	return subsets
+end
+
+local m_aoyi_skill = {}
+m_aoyi_skill.name = "m_aoyi"
+table.insert(sgs.ai_skills, m_aoyi_skill)
+m_aoyi_skill.getTurnUseCard = function(self, inclusive)
+	if (not self.player:hasUsed("#m_aoyi")) then
+		if self.player:getMark("@m_aoyi") == 0 then
+			if self.player:isKongcheng() then return false end
+			for _, enemy in ipairs(self.enemies) do
+				if not enemy:isNude() then
+					return sgs.Card_Parse("#m_aoyi:.:")
+				end
+			end
+		elseif self.player:getMark("@m_aoyi") == 1 then
+			if #self.enemies > 0 then
+				local cards = self.player:getCards("he")
+				cards = sgs.QList2Table(cards)
+				self:sortByKeepValue(cards)
+				
+				local numbers = {}
+				for i, card in ipairs(cards) do
+					-- For efficiency, only consider first 10 cards
+					if i > 10 then break end
+					table.insert(numbers, card:getNumber())
+				end
+				-- Sort card numbers in descending order so as to get minimum subset size
+				table.sort(numbers, function(a, b) return a > b end)
+				-- Get at most 1 solution
+				local subsets = perfectSum(numbers, 12, 1)
+				-- If there exists a solution, AI can invoke skill
+				if #subsets > 0 then
+					self.player:setTag("m_aoyi_2", sgs.QVariant(subsets[1]))
+					return sgs.Card_Parse("#m_aoyi:.:")
+				end
+			end
+		elseif self.player:getMark("@m_aoyi") == 2 then
+			for _, enemy in ipairs(self.enemies) do
+				if not enemy:getEquips():isEmpty() then
+					return sgs.Card_Parse("#m_aoyi:.:")
+				end
+			end
+		elseif self.player:getMark("@m_aoyi") == 3 then
+			if self.player:getHandcardNum() >= 2 and #self.enemies > 0 then
+				return sgs.Card_Parse("#m_aoyi:.:")
+			end
+		end
+	end
+end
+
+sgs.ai_skill_use_func["#m_aoyi"] = function(card, use, self)
+	if self.player:getMark("@m_aoyi") == 0 then
+		local cards = self.player:getCards("h")
+		cards = sgs.QList2Table(cards)
+		self:sortByKeepValue(cards)
+		
+		local f = function(a, b)
+			a_score, b_score = 0, 0
+			for _, card in sgs.qlist(a:getCards("e")) do
+				if self:getSuitNum(card:getSuitString(), false, self.player) > 0 then
+					a_score = a_score + 1
+					break
+				end
+			end
+			for _, card in sgs.qlist(b:getCards("e")) do
+				if self:getSuitNum(card:getSuitString(), false, self.player) > 0 then
+					a_score = a_score + 1
+					break
+				end
+			end
+			if a_score > 0 ~= b_score > 0 then
+				return a_score > b_score
+			else
+				return a:getCardCount() < b:getCardCount()
+			end
+		end
+		
+		table.sort(self.enemies, f)
+		
+		for _, enemy in ipairs(self.enemies) do
+			if not enemy:isNude() then
+				for _, equip in sgs.qlist(enemy:getEquips()) do
+					for _, card in ipairs(cards) do
+						if card:getSuit() == equip:getSuit() then
+							self.player:setTag("m_aoyi_1", sgs.QVariant(card:getSuitString()))
+							use.card = sgs.Card_Parse("#m_aoyi:"..card:getId()..":")
+							if use.to then use.to:append(enemy) end
+							return
+						end
+					end
+				end
+				use.card = sgs.Card_Parse("#m_aoyi:"..cards[1]:getId()..":")
+				if use.to then use.to:append(enemy) end
+				return
+			end
+		end
+	elseif self.player:getMark("@m_aoyi") == 1 then
+		local cards = self.player:getCards("he")
+		cards = sgs.QList2Table(cards)
+		self:sortByKeepValue(cards)
+		
+		self:sort(self.enemies, "hp")
+		
+		-- Table of card numbers summing up to 12
+		local numbers = self.player:getTag("m_aoyi_2"):toString():split("+")
+		local ids = {}
+		for _, card in ipairs(cards) do
+			if #numbers == 0 then break end 
+			if table.removeOne(numbers, tostring(card:getNumber())) then
+				table.insert(ids, card:getId())
+			end
+		end
+		
+		use.card = sgs.Card_Parse("#m_aoyi:"..table.concat(ids, "+")..":")
+		if use.to then use.to:append(self.enemies[1]) end
+		-- self.player:setTag("m_aoyi_2", sgs.QVariant()) -- Do not remove tag since AI fetches sgs.ai_skill_use_func twice
+	elseif self.player:getMark("@m_aoyi") == 2 then
+		self:sort(self.enemies, "hp")
+		local max, target = 0, nil
+		for _, enemy in ipairs(self.enemies) do
+			local n = enemy:getEquips():length()
+			if n > max then
+				max = n
+				target = enemy
+			end
+		end
+		if target ~= nil then
+			use.card = sgs.Card_Parse("#m_aoyi:.:")
+			if use.to then use.to:append(target) end
+		end
+	elseif self.player:getMark("@m_aoyi") == 3 then
+		local cards = self.player:getCards("h")
+		cards = sgs.QList2Table(cards)
+		self:sortByKeepValue(cards)
+		self:sort(self.enemies, "hp")
+		use.card = sgs.Card_Parse("#m_aoyi:"..cards[1]:getId().."+"..cards[2]:getId()..":")
+		if use.to then use.to:append(self.enemies[1]) end
+	end
+end
+
+sgs.ai_skill_cardchosen["m_aoyi"] = function(self, who, flags)
+	local suit = self.player:getTag("m_aoyi_1"):toString()
+	if suit ~= "" then
+		for _, card in sgs.qlist(who:getEquips()) do
+			if card:getSuitString() == suit then
+				self.player:setTag("m_aoyi_1", sgs.QVariant())
+				return card
+			end
+		end
+	end
+	return nil
+end
+
+sgs.ai_use_value["m_aoyi"] = sgs.ai_use_value.Slash + 3
+sgs.ai_use_priority["m_aoyi"] = sgs.ai_use_priority.Slash + 3
+
 --飞翼零式
 local wzpoint_skill = {}
 wzpoint_skill.name = "wzpoint"
@@ -2185,7 +2661,7 @@ table.insert(sgs.ai_skills, liuxing_skill)
 liuxing_skill.getTurnUseCard = function(self, inclusive)
 	local cards = self.player:getCards("h")
 	cards = sgs.QList2Table(cards)
-	self:sortByUseValue(cards)
+	self:sortByUseValue(cards, true)
 	local newcards = {}
 	for _, card in ipairs(cards) do
 		if not isCard("Peach", card, self.player) and not isCard("ExNihilo", card, self.player) then table.insert(newcards, card) end
@@ -2690,7 +3166,7 @@ shuangqiang_skill.getTurnUseCard = function(self, inclusive)
 	if self.player:getPhase() ~= sgs.Player_Play then return false end
 	local cards = self.player:getCards("he")
 	cards = sgs.QList2Table(cards)
-	self:sortByUseValue(cards)
+	self:sortByUseValue(cards, true)
 	local newcards = {}
 	for _, card in ipairs(cards) do
 		if (isCard("EquipCard", card, self.player) or isCard("TrickCard", card, self.player)) and not (isCard("ExNihilo", card, self.player)) then table.insert(newcards, card) end
@@ -2742,7 +3218,7 @@ table.insert(sgs.ai_skills, zuzhuang_skill)
 zuzhuang_skill.getTurnUseCard = function(self, inclusive)
 	local cards = self.player:getCards("he")
 	cards = sgs.QList2Table(cards)
-	self:sortByUseValue(cards)
+	self:sortByUseValue(cards, true)
 	local equipcards = {}
 	local trickcards = {}
 	for _, card in ipairs(cards) do
@@ -2895,7 +3371,7 @@ wenshen_skill.getTurnUseCard = function(self)
 	if self:getCardsNum("EquipCard") == 0 then return false end
 	local cards = self.player:getCards("he")
 	cards = sgs.QList2Table(cards)
-	self:sortByUseValue(cards)
+	self:sortByUseValue(cards, true)
 	if (self:getCardsNum("EquipCard") < 2 and self:getCardsNum("Slash") == 0) or not sgs.Analeptic_IsAvailable(self.player) then
 		local newcards = {}
 		for _, card in ipairs(cards) do
@@ -2996,6 +3472,7 @@ end
 sgs.ai_skill_invoke.quanyu = function(self, data)
 	local prompt = data:toString()
 	if prompt == "A" then
+		if self.player:isNude() then return false end
 		return self:getCardsNum("Slash") > 0 or (self.player:getHp() == 1 and self:getCardsNum("Jink") + self:getCardsNum("Peach") + self:getCardsNum("Analeptic") + self:getCardsNum("Guard") == 0)
 	elseif prompt:startsWith("S") then
 		local name = prompt:split(":")[2]
@@ -3260,7 +3737,7 @@ daijin_skill.getTurnUseCard = function(self, inclusive)
 	if self.player:hasUsed("daijin") then return false end
 	local cards = self.player:getCards("h")
 	cards = sgs.QList2Table(cards)
-	self:sortByUseValue(cards)
+	self:sortByUseValue(cards, true)
 	local newcards = {}
 	local ids = {}
 	for _, card in ipairs(cards) do
@@ -3434,7 +3911,7 @@ jianhun_skill.getTurnUseCard = function(self, inclusive)
 	if self.player:hasUsed("jianhun") or self.player:getPile("hun"):length() >= 3 then return false end
 	local cards = self.player:getCards("he")
 	cards = sgs.QList2Table(cards)
-	self:sortByUseValue(cards)
+	self:sortByUseValue(cards, true)
 	for _,card in ipairs(cards) do
 		if card:isRed() and not card:isKindOf("ExNihilo") and not (self.player:isWounded() and card:isKindOf("Peach"))
 			and not (self:getCardsNum("Jink") == 1 and card:isKindOf("Jink")) and not (self:getCardsNum("Slash") == 1 and card:isKindOf("Slash")) then
@@ -3555,7 +4032,7 @@ sgs.ai_skill_cardchosen["shewei"] = function(self, who, flags)
 	else
 		cards = self.player:getCards("e")
 		cards = sgs.QList2Table(cards)
-		self:sortByKeepValue(cards, true)
+		self:sortByKeepValue(cards)
 		return cards[1]
 	end
 	return nil
@@ -4521,7 +4998,7 @@ huancai_skill.getTurnUseCard = function(self, inclusive)
 	if self.player:hasUsed("huancai") then return false end
 	local cards = self.player:getCards("he")
 	cards = sgs.QList2Table(cards)
-	self:sortByUseValue(cards)
+	self:sortByUseValue(cards, true)
 	for _,card in ipairs(cards) do
 		if not card:isKindOf("ExNihilo") and not (self.player:isWounded() and card:isKindOf("Peach")) and not (self:getCardsNum("Jink") == 1 and card:isKindOf("Jink")) then
 			local suit = card:getSuitString()
@@ -4604,7 +5081,7 @@ canguang_skill.getTurnUseCard = function(self)
 	if self.player:getMark("@HITO") >= 100 and self.player:getMark("@HITO") < 666 then return false end
 	local cards = self.player:getCards("h")
 	cards = sgs.QList2Table(cards)
-	self:sortByUseValue(cards)
+	self:sortByUseValue(cards, true)
 	
 	local has_anal = false
 	for _,card in ipairs(cards)  do

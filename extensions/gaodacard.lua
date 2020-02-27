@@ -53,14 +53,13 @@ shoot = sgs.CreateBasicCard{--BUG:can't view as
 		local source = effect.from
 		local target = effect.to
 		local room = source:getRoom()
-		--room:setEmotion(source, "killer")
-		if not room:askForCard(target, "jink", "shoot-jink:"..source:objectName()..":"..self:objectName(), sgs.QVariant(), sgs.Card_MethodResponse, source) then
-			local damage = sgs.DamageStruct()
-			damage.from = source
-			damage.to = target
-			damage.damage = 1
-			damage.card = self
-			room:damage(damage)
+		local data = sgs.QVariant()
+		data:setValue(effect)
+		local jink = room:askForCard(target, "jink", "shoot-jink:"..source:objectName()..":"..self:objectName(), data, sgs.Card_MethodResponse, source:isAlive() and source or nil)
+		if jink and jink:getSkillName() ~= "eight_diagram" and jink:getSkillName() ~= "bazhen" then
+			room:setEmotion(target, "jink")
+		elseif not jink then
+			room:damage(sgs.DamageStruct(self, source:isAlive() and source or nil, target))
 		end
 	end
 }
@@ -130,14 +129,13 @@ pierce_shoot = sgs.CreateBasicCard{
 		local source = effect.from
 		local target = effect.to
 		local room = source:getRoom()
-		--room:setEmotion(source, "killer")
-		if not room:askForCard(target, "jink", "shoot-jink:"..source:objectName()..":"..self:objectName(), sgs.QVariant(), sgs.Card_MethodResponse, source) then
-			local damage = sgs.DamageStruct()
-			damage.from = source
-			damage.to = target
-			damage.damage = 1
-			damage.card = self
-			room:damage(damage)
+		local data = sgs.QVariant()
+		data:setValue(effect)
+		local jink = room:askForCard(target, "jink", "shoot-jink:"..source:objectName()..":"..self:objectName(), data, sgs.Card_MethodResponse, source:isAlive() and source or nil)
+		if jink and jink:getSkillName() ~= "eight_diagram" and jink:getSkillName() ~= "bazhen" then
+			room:setEmotion(target, "jink")
+		elseif not jink then
+			room:damage(sgs.DamageStruct(self, source:isAlive() and source or nil, target))
 		end
 	end
 }
@@ -204,14 +202,13 @@ spread_shoot = sgs.CreateBasicCard{
 		local source = effect.from
 		local target = effect.to
 		local room = source:getRoom()
-		--room:setEmotion(source, "killer")
-		if not room:askForCard(target, "jink", "shoot-jink:"..source:objectName()..":"..self:objectName(), sgs.QVariant(), sgs.Card_MethodResponse, source) then
-			local damage = sgs.DamageStruct()
-			damage.from = source
-			damage.to = target
-			damage.damage = 1
-			damage.card = self
-			room:damage(damage)
+		local data = sgs.QVariant()
+		data:setValue(effect)
+		local jink = room:askForCard(target, "jink", "shoot-jink:"..source:objectName()..":"..self:objectName(), data, sgs.Card_MethodResponse, source:isAlive() and source or nil)
+		if jink and jink:getSkillName() ~= "eight_diagram" and jink:getSkillName() ~= "bazhen" then
+			room:setEmotion(target, "jink")
+		elseif not jink then
+			room:damage(sgs.DamageStruct(self, source:isAlive() and source or nil, target))
 		end
 	end
 }
@@ -520,8 +517,8 @@ sgs.LoadTranslationTable{
 	<b>目标</b>：此【杀】/【射击】造成的伤害\
 	<b>格挡率</b>：【杀】：70%，【射击】：100%\
 	<b>效果</b>：被格挡的【杀】/【射击】对你造成的伤害-1。",
-	["@Guard"] = "%dest 令你受到【%src】的伤害，请使用一张【档】",
-	["@@Guard"] = "你受到【%src】造成的伤害，请使用一张【档】",
+	["@Guard"] = "%dest 令你受到【%src】的伤害，请使用一张【挡】",
+	["@@Guard"] = "你受到【%src】造成的伤害，请使用一张【挡】",
 	["#Guard_failed"] = "%from 使用的 %card 格挡失败",
 	
 	["counter_guard"] = "反击挡",
