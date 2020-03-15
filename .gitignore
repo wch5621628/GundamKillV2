@@ -1,5 +1,5 @@
-config.ini
-#**/*.db
+/config.ini
+**/Thumbs.db
 g.json
 gbackup.json
 QVersion.txt
