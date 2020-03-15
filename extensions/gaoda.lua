@@ -256,6 +256,8 @@ function resumeHuaShen(player)--BUG Resolver (玩家失去任意技能后，化�
 			startHuaShen(player, "NORN_NTD", "zuzhou", false)
 		elseif player:getMark("@xuanguang") > 0 and player:getGeneralName():startsWith("NORN") then
 			startHuaShen(player, "NORN_NTD", "xuanguang", false)
+		elseif player:hasSkill("qiji") and player:getGeneralName():startsWith("PHENEX") then
+			startHuaShen(player, "PHENEX_NTD", "qiji", false)
 		elseif player:getMark("jingxin") > 0 and player:getGeneralName():startsWith("SHINING") then
 			startHuaShen(player, "SHINING_S", "jingxin", false)
 		elseif player:getMark("@mingjingzhishui") > 0 and player:getGeneralName():startsWith("GOD") then
@@ -509,7 +511,7 @@ generalName2BGM = function(name)
 		{"BGM"..math.random(5, 6), "BUILD_BURNING", "TRY_BURNING"},
 		{"BGM7", "DESTINY", "SP_DESTINY"},
 		{"BGM8", "IMPULSE", "SAVIOUR"},
-		{"BGM9", "UNICORN", "UNICORN_NTD", "FA_UNICORN", "KSHATRIYA", "SINANJU", "ReZEL", "DELTA_PLUS", "JESTA", "BYARLANT_C", "BANSHEE", "NORN", "PHENEX"},
+		{"BGM9", "UNICORN", "FA_UNICORN", "KSHATRIYA", "SINANJU", "ReZEL", "DELTA_PLUS", "JESTA", "BYARLANT_C", "BANSHEE", "NORN", "PHENEX"},
 		{"BGM10", "FREEDOM", "FREEDOM_D"},
 		{"BGM11", "WZ", "EPYON"},
 		{"BGM12", "WZC", "DSH", "HAC", "SANDROCK", "ALTRON"},
@@ -673,7 +675,7 @@ if dlc then
 		t = file:read("*all"):split("\n")
 		file:close()
 	end
-end--BUG:t may not exist when online
+end
 ]]
 
 --[[
@@ -1930,7 +1932,7 @@ saveItem = function(item_type, add_num)
 			n = n + add_num
 			exist = true
 		end
-		record:write(s[1] .. "=" .. n)--BUG:nil n
+		record:write(s[1] .. "=" .. n)
 		if d ~= #tt or not exist then
 			record:write("\n")
 		end
@@ -3429,6 +3431,7 @@ NTD = sgs.CreateTriggerSkill
 				local n = 0
 				local handcards = player:handCards()
 				room:fillAG(handcards)
+				room:showAllCards(player)
 				for _,h in sgs.qlist(handcards) do
 					if sgs.Sanguosha:getCard(h):isRed() then
 						n = n + 1
@@ -3549,10 +3552,6 @@ sgs.Sanguosha:addSkills(skills)
 UNICORN:addRelateSkill("huimie")
 
 UNICORN_NTD = sgs.General(extension, "UNICORN_NTD", "EFSF", 4, true, true, true)
-UNICORN_NTD:addSkill(shenshou)
-UNICORN_NTD:addSkill(quanwu)
-UNICORN_NTD:addSkill(NTD)
-UNICORN_NTD:addRelateSkill("huimie")
 
 FA_UNICORN = sgs.General(extension, "FA_UNICORN", "EFSF", 3, true, false)
 
@@ -5044,6 +5043,7 @@ NTD2card = sgs.CreateSkillCard{
 			local n = 0
 			local handcards = source:handCards()
 			room:fillAG(handcards)
+			room:showAllCards(source)
 			for _,h in sgs.qlist(handcards) do
 				if sgs.Sanguosha:getCard(h):isBlack() then
 					n = n + 1
@@ -5133,9 +5133,6 @@ BANSHEE:addRelateSkill("baosang")
 extension:insertRelatedSkills("mengshi", "#mengshislash")
 
 BANSHEE_NTD = sgs.General(extension, "BANSHEE_NTD", "EFSF", 4, false, true, true)
-BANSHEE_NTD:addSkill(mengshi)
-BANSHEE_NTD:addSkill(NTD2)
-BANSHEE_NTD:addRelateSkill("baosang")
 
 --[[NORN = sgs.General(extension, "NORN", "EFSF", 4, true, dlc, dlc)
 if dlc then
@@ -5405,6 +5402,7 @@ NTD3card = sgs.CreateSkillCard{
 			local n = 0
 			local handcards = source:handCards()
 			room:fillAG(handcards)
+			room:showAllCards(source)
 			for _,h in sgs.qlist(handcards) do
 				if sgs.Sanguosha:getCard(h):isBlack() then
 					n = n + 1
@@ -5580,50 +5578,64 @@ NORN:addRelateSkill("zuzhou")
 --extension:insertRelatedSkills("shenshi", "#shenshi_damage")
 
 NORN_NTD = sgs.General(extension, "NORN_NTD", "EFSF", 4, true, true, true)
-NORN_NTD:addSkill(shenshi)
-NORN_NTD:addSkill(NTD3)
-NORN_NTD:addRelateSkill("zuzhou")
 
-PHENEX = sgs.General(extension, "PHENEX", "EFSF", 4, true, true, true)
+PHENEX = sgs.General(extension, "PHENEX", "EFSF", 4, false, true, false)
 
 shenniaocard = sgs.CreateSkillCard{
 	name = "shenniao",
 	target_fixed = false,
 	will_throw = true,
 	filter = function(self, targets, to_select, player)
-		return #targets < 2 and to_select:objectName() ~= player:objectName()
+		return #targets < self:subcardsLength() and to_select:objectName() ~= player:objectName()
 	end,
-	on_effect = function(self, effect)
-		local room = effect.from:getRoom()
-		room:setPlayerMark(effect.to, "@shenniao", 1)
-		room:setPlayerMark(effect.to, "Equips_Nullified_to_Yourself", 1)
-		if effect.to:hasEquip() then
+	feasible = function(self, targets)
+		return #targets == self:subcardsLength()
+	end,
+	on_use = function(self, room, source, targets)		
+		for _, t in ipairs(targets) do
+			room:addPlayerMark(t, "shenniao")
+			room:addPlayerMark(t, "Equips_Nullified_to_Yourself")
+			
 			local log = sgs.LogMessage()
-			log.type = "$shenniaolog"
-			log.from = effect.from
-			log.to:append(effect.to)
+			log.type = "$ShenniaoNullify"
+			log.to:append(t)
 			log.arg = self:objectName()
-			local card = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, -1)
-			card:addSubcards(effect.to:getEquips())
-			log.card_str = card:subcardString()
 			room:sendLog(log)
 		end
+		
+		for _, id in sgs.qlist(self:getSubcards()) do
+			if sgs.Sanguosha:getCard(id):getClassName():endsWith("Guard") then
+				local tos = sgs.SPlayerList()
+				local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+				slash:setSkillName(self:objectName())
+				for _, t in ipairs(targets) do
+					if not source:isProhibited(t, slash) then
+						tos:append(t)
+					end
+				end
+				if not tos:isEmpty() then
+					room:useCard(sgs.CardUseStruct(slash, source, tos), true)
+				end
+				break
+			end
+		end
+		
 		--[[room:setPlayerProperty(effect.to, "alive", sgs.QVariant(false))
 		room:setPlayerProperty(effect.to, "role", sgs.QVariant("unknown"))--set original role before revive
 		room:doBroadcastNotify(sgs.CommandType.S_COMMAND_KILL_PLAYER, sgs.QVariant(effect.to:objectName()))
 		room:broadcastProperty(effect.to, "role")
 		room:resetAI(effect.to)]]--BUG:neo zeong test
-	end,
+	end
 }
 
-shenniaovs = sgs.CreateViewAsSkill{
+shenniao = sgs.CreateViewAsSkill{
 	name = "shenniao",
 	n = 2,
 	view_filter = function(self, selected, to_select)
 		return to_select:isKindOf("BasicCard")
 	end,
 	view_as = function(self, cards)
-	if #cards == 2 then
+	if #cards > 0 then
 		local acard = shenniaocard:clone()
 		for _,card in pairs(cards) do
 			acard:addSubcard(card)
@@ -5637,26 +5649,125 @@ shenniaovs = sgs.CreateViewAsSkill{
 	end,
 }
 
-shenniao = sgs.CreateTriggerSkill{
-	name = "shenniao",
-	events = {sgs.EventPhaseStart},
-	view_as_skill = shenniaovs,
-	on_trigger = function(self,event,player,data)
+shenniao_clear = sgs.CreateTriggerSkill{
+	name = "#shenniao_clear",
+	events = {sgs.TurnStart, sgs.EventPhaseChanging},
+	global = true,
+	can_trigger = function(self, player)
+		return player and player:isAlive() and player:getMark("shenniao") > 0
+	end,
+	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-	if event == sgs.EventPhaseStart then
-		if player:getPhase() == sgs.Player_Start then
-			for _,p in sgs.qlist(room:getOtherPlayers(player)) do
-				if p:getMark("@shenniao") > 0 then
-					room:setPlayerMark(p, "@shenniao", 0)
-					room:setPlayerMark(p, "Equips_Nullified_to_Yourself", 0)
+		if (event == sgs.TurnStart and not player:faceUp())
+			or (event == sgs.EventPhaseChanging and data:toPhaseChange().from ~= sgs.Player_NotActive and data:toPhaseChange().to == sgs.Player_NotActive) then
+			local x = player:getMark("shenniao")
+			room:setPlayerMark(player, "shenniao", 0)
+			room:removePlayerMark(player, "Equips_Nullified_to_Yourself", x)
+			
+			local log = sgs.LogMessage()
+			log.type = "$ShenniaoReset"
+			log.from = player
+			log.arg = "shenniao"
+			room:sendLog(log)
+		end
+	end
+}
+
+NTD4vs = sgs.CreateZeroCardViewAsSkill{
+	name = "ntdfour",
+	response_pattern = "@@ntdfour",
+	view_as = function(self)
+		local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+		slash:setSkillName(self:objectName())
+		return slash
+	end,
+	--enabled_at_play = function(self, player)
+	--	return false
+	--end
+}
+
+NTD4 = sgs.CreateTriggerSkill{
+	name = "ntdfour",
+	frequency = sgs.Skill_Wake,
+	events = {sgs.AskForPeaches},
+	view_as_skill = NTD4vs,
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local dying_data = data:toDying()
+		local source = dying_data.who
+		if source:objectName() == player:objectName() then
+			if player:getMark("@NTD4") == 0 then
+				room:sendCompulsoryTriggerLog(player, self:objectName())
+				room:broadcastSkillInvoke("NTD")
+				room:doLightbox("image=image/animate/NTD4.png", 1500)
+				room:setEmotion(player, "NTD4")
+				room:getThread():delay(2700)
+				
+				startHuaShen(player, "PHENEX_NTD", "qiji", not player:getGeneral():hasSkill(self:objectName()))
+				
+				player:gainMark("@NTD4")
+				room:setPlayerMark(player, self:objectName(), 1)
+				room:loseMaxHp(player)
+				
+				--涅槃
+				player:throwAllCards()
+				local maxhp = player:getMaxHp()
+				local hp = math.min(3, maxhp)
+				room:setPlayerProperty(player, "hp", sgs.QVariant(hp))
+				player:drawCards(3)
+				if player:isChained() then
+					local damage = dying_data.damage
+					if (damage == nil) or (damage.nature == sgs.DamageStruct_Normal) then
+						room:setPlayerProperty(player, "chained", sgs.QVariant(false))
+					end
 				end
+				if not player:faceUp() then
+					player:turnOver()
+				end
+				
+				if not player:isKongcheng() then
+					local has_basic = false
+					local handcards = player:handCards()
+					room:fillAG(handcards)
+					room:showAllCards(player)
+					for _, card in sgs.qlist(player:getHandcards()) do
+						if card:isKindOf("BasicCard") then
+							has_basic = true
+							if not room:askForUseCard(player, "@@ntdfour", "@ntdfour") then break end
+						end
+					end
+					if not has_basic then
+						room:getThread():delay(1500)
+					end
+					room:clearAG()
+				end
+				
+				room:acquireSkill(player, "qiji")
 			end
 		end
 	end
-	end,
+}
+
+NTD4_slash = sgs.CreateTargetModSkill{
+	name = "#ntdfour_slash",
+	pattern = "Slash",
+	distance_limit_func = function(self, player, card)
+		if card:getSkillName() == "ntdfour" then
+			return 998
+		end
+	end
 }
 
 PHENEX:addSkill(shenniao)
+PHENEX:addSkill(shenniao_clear)
+PHENEX:addSkill(NTD4)
+PHENEX:addSkill(NTD4_slash)
+--local skills = sgs.SkillList()
+--if not sgs.Sanguosha:getSkill("qiji") then skills:append(qiji) end
+--sgs.Sanguosha:addSkills(skills)
+PHENEX:addRelateSkill("qiji")
+
+PHENEX_NTD = sgs.General(extension, "PHENEX_NTD", "EFSF", 4, false, true, true)
 
 EX_S = sgs.General(extension, "EX_S", "EFSF", 4, true, false)
 
@@ -10715,12 +10826,14 @@ daijin = sgs.CreateTriggerSkill
 					if choice then
 						local log = sgs.LogMessage()
 						log.type = "$DaijinNullify"
-						log.from = player
 						log.to:append(damage.to)
 						log.arg = choice
+						log.arg2 = self:objectName()
 						room:sendLog(log)
 						room:addPlayerMark(damage.to, "Qingcheng"..choice)
-						damage.to:setTag("daijin_record", sgs.QVariant(choice))
+						local daijin_record = damage.to:getTag("daijin_record"):toString():split("+")
+						table.insert(daijin_record, choice)
+						damage.to:setTag("daijin_record", sgs.QVariant(table.concat(daijin_record, "+")))
 					end
 				end
 			end
@@ -10746,6 +10859,7 @@ daijina = sgs.CreateTriggerSkill
 {
 	name = "#daijina",
 	events = {sgs.TurnStart, sgs.EventPhaseChanging},
+	global = true,
 	can_trigger = function(self, player)
 		return player and player:isAlive() and player:getTag("daijin_record"):toString() ~= ""
 	end,
@@ -10753,14 +10867,18 @@ daijina = sgs.CreateTriggerSkill
 		local room = player:getRoom()
 		if (event == sgs.TurnStart and not player:faceUp())
 			or (event == sgs.EventPhaseChanging and data:toPhaseChange().from ~= sgs.Player_NotActive and data:toPhaseChange().to == sgs.Player_NotActive) then
-			local record = player:getTag("daijin_record"):toString()
-			local log = sgs.LogMessage()
-			log.type = "$DaijinReset"
-			log.from = player
-			log.arg = record
-			room:sendLog(log)
-			room:removePlayerMark(player, "Qingcheng"..record)
-			player:setTag("daijin_record", sgs.QVariant())
+			local daijin_record = player:getTag("daijin_record"):toString():split("+")
+			for _, record in ipairs(daijin_record) do
+				room:removePlayerMark(player, "Qingcheng"..record)
+				
+				local log = sgs.LogMessage()
+				log.type = "$DaijinReset"
+				log.from = player
+				log.arg = record
+				log.arg2 = "daijin"
+				room:sendLog(log)
+			end
+			player:removeTag("daijin_record")
 		end
 	end
 }
@@ -14958,10 +15076,10 @@ lunwucard = sgs.CreateSkillCard{
 	name = "lunwu",
 	will_throw = false,
 	filter = function(self, targets, to_select, player)
-		return self:subcardsLength() > 0 and #targets < self:subcardsLength() and to_select:objectName() ~= player:objectName()
+		return #targets < self:subcardsLength() and to_select:objectName() ~= player:objectName()
 	end,
 	feasible = function(self, targets)
-		return self:subcardsLength() > 0 and #targets == self:subcardsLength()
+		return #targets == self:subcardsLength()
 	end,
 	on_use = function(self, room, source, targets)
 		room:doLightbox("image=image/animate/"..self:objectName()..".png")
@@ -15027,7 +15145,7 @@ lunwuVS = sgs.CreateViewAsSkill{
 		return not to_select:isEquipped()
 	end,
 	view_as = function(self, cards)
-		if #cards <= 2 then
+		if #cards > 0 then
 			local acard = lunwucard:clone()
 			for _,card in pairs(cards) do
 				acard:addSubcard(card)
@@ -15149,10 +15267,10 @@ longhoucard = sgs.CreateSkillCard{
 	name = "longhou",
 	will_throw = false,
 	filter = function(self, targets, to_select, player)
-		return self:subcardsLength() > 0 and #targets < self:subcardsLength() and to_select:objectName() ~= player:objectName()
+		return #targets < self:subcardsLength() and to_select:objectName() ~= player:objectName()
 	end,
 	feasible = function(self, targets)
-		return self:subcardsLength() > 0 and #targets == self:subcardsLength()
+		return #targets == self:subcardsLength()
 	end,
 	on_use = function(self, room, source, targets)
 		room:doLightbox("image=image/animate/"..self:objectName()..".png")
@@ -15218,7 +15336,7 @@ longhouVS = sgs.CreateViewAsSkill{
 		return not to_select:isEquipped()
 	end,
 	view_as = function(self, cards)
-		if #cards <= 2 then
+		if #cards > 0 then
 			local acard = longhoucard:clone()
 			for _,card in pairs(cards) do
 				acard:addSubcard(card)
@@ -15684,7 +15802,7 @@ sgs.LoadTranslationTable{
 	[":mengshi"] = "当你使用一张<b>黑色</b>的【杀】指定一名角色为目标后，你可以将其装备区里的一张牌置于其手牌，若如此做，你于此阶段可额外使用一张【杀】。",
 	["#mengshislash"] = "猛狮",
 	["ntdtwo"] = "NT-D",
-	[":ntdtwo"] = "<img src=\"image/mark/@NTD2.png\"><b><font color='red'>限定技，</font></b>出牌阶段，你可以：减1点体力上限，展示你当前手牌，每有一张<b>黑色</b>牌，视为你使用一张【过河拆桥】，并获得技能<b>“报丧”</b>（当你成为一张非延时类锦囊牌的目标时，你可以将一张<b>黑色</b>手牌当【乐不思蜀】或【兵粮寸断】使用，并终止此牌结算）",
+	[":ntdtwo"] = "<img src=\"image/mark/@NTD2.png\"><b><font color='red'>限定技，</font></b>出牌阶段，你可以：减1点体力上限，展示你当前手牌，每有一张<b>黑色</b>牌，你可以视为使用一张【过河拆桥】，并获得技能<b>“报丧”</b>（当你成为一张非延时类锦囊牌的目标时，你可以将一张<b>黑色</b>手牌当【乐不思蜀】或【兵粮寸断】使用，并终止此牌结算）。",
 	["@NTD2"] = "NT-D",
 	["@ntdtwo"] = "请选择【过河拆桥】的目标角色",
 	["~ntdtwo"] = "选择目标→确定",
@@ -15717,7 +15835,7 @@ sgs.LoadTranslationTable{
 	--["~shenshi"] = "选择手牌→选择目标→确定",
 	--["po"] = "破",
 	["ntdthree"] = "NT-D",
-	[":ntdthree"] = "<img src=\"image/mark/@NTD3.png\"><b><font color='red'>限定技，</font></b>出牌阶段，你可以：减1点体力上限，展示你当前手牌，每有一张<b>黑色</b>牌，视为你使用一张【过河拆桥】，并获得技能<b>“诅咒”</b>（当你成为一张非延时类锦囊牌的目标时，你可以将一张<b>黑色</b>手牌当【杀】使用，并终止此牌结算）。",
+	[":ntdthree"] = "<img src=\"image/mark/@NTD3.png\"><b><font color='red'>限定技，</font></b>出牌阶段，你可以：减1点体力上限，展示你当前手牌，每有一张<b>黑色</b>牌，你可以视为使用一张【过河拆桥】，并获得技能<b>“诅咒”</b>（当你成为一张非延时类锦囊牌的目标时，你可以将一张<b>黑色</b>手牌当【杀】使用，并终止此牌结算）。",
 	["@NTD3"] = "NT-D",
 	["@ntdthree"] = "请选择【过河拆桥】的目标角色",
 	["~ntdthree"] = "选择目标→确定",
@@ -15741,15 +15859,16 @@ sgs.LoadTranslationTable{
 	["$xuanguang1"] = "行け…バンシィ!!",
 	["$xuanguang2"] = "バンシィ、俺に力を貸してくれ…!",
 	
-	["PHENEX"] = "凤凰独角兽",
+	["PHENEX"] = "菲尼克斯",
 	["#PHENEX"] = "金色的不死鸟",
 	["~PHENEX"] = "",
 	["designer:PHENEX"] = "wch5621628 & Sankies & NOS7IM",
 	["cv:PHENEX"] = "",
 	["illustrator:PHENEX"] = "wch5621628",
 	["shenniao"] = "神鸟",
-	[":shenniao"] = "出牌阶段限一次，你可以弃置两张基本牌，令一至两名其他角色的所有装备效果无效，直到你的下回合开始前。",
-	["$shenniaolog"] = "%from 对 %to 发动了“%arg”，%to 的 %card 效果无效",
+	[":shenniao"] = "出牌阶段限一次，你可以弃置一至两张基本牌，令等量名其他角色的装备无效，直到其下回合结束，若弃置的牌中有【挡】，则视为对其使用【杀】。",
+	["$ShenniaoNullify"] = "%to 的装备由于“%arg”效果无效，直到其下回合结束",
+	["$ShenniaoReset"] = "“%arg”效果消失，%from 的装备恢复有效",
 	
 	["EX_S"] = "EX-S",
 	["#EX_S"] = "精灵的意志",
@@ -16565,8 +16684,8 @@ sgs.LoadTranslationTable{
 	["illustrator:SF"] = "wch5621628",
 	["daijin"] = "殆烬",
 	[":daijin"] = "出牌阶段限一次，你可以将两张手牌当火【杀】使用，此【杀】可指定至多等量目标且无距离限制，对目标角色造成伤害后，令其一项非觉醒技无效，直到其下回合结束。",
-	["$DaijinNullify"] = "%to 的技能“%arg”由于“<font color=\"yellow\"><b>殆烬</b></font>”效果无效直到其下回合结束",
-	["$DaijinReset"] = "%from 回合结束，“%arg”恢复有效",
+	["$DaijinNullify"] = "%to 的技能“%arg”由于“%arg2”效果无效，直到其下回合结束",
+	["$DaijinReset"] = "“%arg2”效果消失，%from 的技能“%arg”恢复有效",
 	["zhongzisf"] = "种子",
 	[":zhongzisf"] = "<img src=\"image/mark/@seedsf.png\"><b><font color='green'>觉醒技，</font></b>准备阶段开始时或成为【杀】的目标时，若你没有手牌，你减1点体力上限并摸两张牌，将<b>“殆烬”</b>描述中的<b>“两张”</b>改为<b>“至少两张”</b>，并获得技能<b>“超骑”</b>（当你成为【杀】的目标后，你可以：摸一张牌并展示之，若为红桃，你对其造成1点伤害；若为方块，你弃置来源一张牌，重复此流程）。",
 	["@seedsf"] = "SEED",

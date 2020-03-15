@@ -1,6 +1,6 @@
 config.ini
-g.lua
-g2.lua
-g3.lua
-*.db
+#**/*.db
+g.json
+gbackup.json
 QVersion.txt
+etc/customScenes/custom_scenario.txt
