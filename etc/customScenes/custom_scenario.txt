@@ -1,4 +1,6 @@
 
-general:BYARLANT_C role:lord starter:true 
+general:VILLKISS role:lord starter:true 
+general:ENRYUGO role:loyalist 
+general:select role:rebel 
 general:select role:rebel 
 general:select role:rebel 
