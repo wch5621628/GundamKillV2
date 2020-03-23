@@ -24,9 +24,14 @@ end
 
 gdata = "g.json" --存档
 gbackup = "gbackup.json" --存档备份（每日签到时备份）
---gdata = "g.lua" --胜率
---g2data = "g2.lua" --金币、皮肤、支援机
---g3data = "g3.lua" --每日奖励
+--gdata = "g.lua" --胜率（旧版）
+--g2data = "g2.lua" --金币、皮肤、支援机（旧版）
+--g3data = "g3.lua" --每日奖励（旧版）
+
+--开放道具列表
+item_list = {"Coin", "bird_pendant"}
+--道具显示上限
+item_max = {["bird_pendant"] = 3}
 
 --开放使用的支援机
 zb_list = {"ZAKU", "GM", "JEGAN", "BUCUE", "M1_ASTRAY", "FLAG", "TIEREN", "GENOACE", "GAFRAN"}
@@ -40,6 +45,8 @@ g_skin_cp = {
 	{"FA_UNICORN", "FA_UNICORN_skin1"},
 	{"GOD", "GOD_skin1", "GOD_skin2"},
 	{"MASTER", "MASTER_skin1"},
+	{"WZC", "WZC_skin1"},
+	{"DX", "DX_skin1"},
 	{"PERFECT_STRIKE", "PERFECT_STRIKE_skin1"},
 	{"FREEDOM", "FREEDOM_skin1", "FREEDOM_skin2"},
 	{"JUSTICE", "JUSTICE_skin1", "JUSTICE_skin2"},
@@ -60,6 +67,9 @@ g_skin_cp = {
 
 --扭蛋解禁机体
 unlock_list = {"TRY_BURNING", "G_SELF_PP", "GOD", "MASTER", "VILLKISS", "ENRYUGO"}
+
+--特殊解禁机体（获得足够道具解锁）
+sp_unlock_list = {["bird_pendant"] = "PHENEX"}
 
 do
 	require  "lua.config"
@@ -402,7 +412,7 @@ gdsrule = sgs.CreateTriggerSkill{
 			end
 			if sgs.Sanguosha:translate("~"..death.who:getGeneralName()) ~= "~"..death.who:getGeneralName() and
 				sgs.Sanguosha:translate("~"..death.who:getGeneralName()) ~= "" then
-				room:doLightbox("~"..death.who:getGeneralName(), 1000)
+				room:doLightbox("~"..death.who:getGeneralName(), 2000)
 			end
 		end
 	end
@@ -1799,6 +1809,12 @@ if lucky_card then
 							table.insert(new_ms, un)
 						end
 					end
+					for it,un in pairs(sp_unlock_list) do
+						local repeated = saveItem("Unlock", un, 0)
+						if not repeated and use.from:getMark("@" .. it) >= item_max[it] then
+							table.insert(new_ms, un)
+						end
+					end
 					if #new_ms == 0 then
 						room:broadcastSkillInvoke("gdsbgm", 9)
 						room:getThread():delay(2700)
@@ -1827,7 +1843,6 @@ if lucky_card then
 					end
 				end
 				lucky_translate(true) --动态描述
-				--room:changeHero(use.from, "itemshow", false, false, false, false)
 				room:detachSkillFromPlayer(use.from, "itemnum", true)
 				use.from:addSkill("itemnum")
 				room:attachSkillToPlayer(use.from, "itemnum")
@@ -1854,32 +1869,38 @@ if lucky_card then
 		name = "itemnum",
 		events = {sgs.GameStart, sgs.DrawNCards, sgs.EventPhaseEnd},
 		view_as_skill = itemnumvs,
+		can_trigger = function(self, player)
+			return player and player:getGameMode() == "_mini_1"
+		end,
 		on_trigger = function(self, event, player, data)
 			local room = player:getRoom()
 			if lucky_card == false then return false end
 			if event == sgs.GameStart then
 				local ip = room:getOwner():getIp()
-				if ip ~= "" and string.find(ip, "127.0.0.1") and player:objectName() == room:getOwner():objectName()
-					--[[and file_exists(g2data)]] and player:getGameMode() == "_mini_1" then
-					--[[changeBGM("BGM99")
-					local log = sgs.LogMessage()
-					log.type = "#BGM"
-					log.arg = "BGM99"
-					room:sendLog(log)]]
-					--require "g2"
+				if ip ~= "" and string.find(ip, "127.0.0.1") and player:objectName() == room:getOwner():objectName() then
 					local t = readData("Item")
-					--if Coin ~= nil and Coin > 0 then
-						room:setPlayerMark(player, "@coin", t["Item"]["Coin"])
-					--end
+					room:setPlayerMark(player, "@coin", t["Item"]["Coin"] or 0)
+					for i = 2, #item_list do
+						local it = item_list[i]
+						room:setPlayerMark(player, "@" .. it, math.min(t["Item"][it] or 0, item_max[it]))
+					end
 				else
 					player:speak("请单机启动扭蛋，谢谢")
 				end
 			elseif event == sgs.DrawNCards then
-				if player:getGameMode() == "_mini_1" and player:getGeneralName() == "itemshow" then
+				if player:getGeneralName() == "itemshow" then
+					lucky_translate(true) --动态描述
+					room:detachSkillFromPlayer(player, "itemnum", true)
+					player:addSkill("itemnum")
+					room:attachSkillToPlayer(player, "itemnum")
+					room:detachSkillFromPlayer(player, "itemnum_ten", true)
+					player:addSkill("itemnum_ten")
+					room:attachSkillToPlayer(player, "itemnum_ten")
+					
 					data:setValue(0)
 				end
 			else
-				if player:getGameMode() == "_mini_1" and player:getGeneralName() == "itemshow" and player:getPhase() == sgs.Player_Play then
+				if player:getGeneralName() == "itemshow" and player:getPhase() == sgs.Player_Play then
 					sgs.Sanguosha:playSystemAudioEffect("pop-up")
 					room:doLightbox("image=image/system/emotion/capsule_finish/0.png", 1000)
 					sgs.Sanguosha:playSystemAudioEffect("pop-up")
@@ -1996,8 +2017,10 @@ luckyrecordm = sgs.CreateMaxCardsSkill{
 		if player and player:hasSkill(self:objectName()) then
 			if not player:hasFlag("g2data_saved") then
 				player:setFlags("g2data_saved")
-				local n = math.max(player:getMark("add_coin"), 1)
-				saveItem("Item", "Coin", n)
+				local item = player:property("lucky_item"):toString()
+				if item == "" then item = "Coin" end
+				local n = math.max(player:getMark("lucky_item_n"), 1)
+				saveItem("Item", item, n)
 			end
 		end
 		return 0
@@ -3117,7 +3140,7 @@ tuci = sgs.CreateTriggerSkill{
 ZETA:addSkill(bianxing)
 ZETA:addSkill(chihun)
 ZETA:addSkill(jvjian)
-ZETA_WR:addSkill(bianxing)
+if not sgs.Sanguosha:getSkill("bianxing") then ZETA_WR:addSkill(bianxing) end
 ZETA_WR:addSkill(chonglang)
 ZETA_WR:addSkill(chonglangdistance)
 ZETA_WR:addSkill(tuci)
@@ -3427,11 +3450,13 @@ NTD = sgs.CreateTriggerSkill
 			player:gainMark("@NTD")
 			room:setPlayerMark(player, "NTD", 1)
 			room:loseMaxHp(player)
+			
+			room:acquireSkill(player, "huimie")
+			
 			if not player:isKongcheng() then
 				local n = 0
 				local handcards = player:handCards()
 				room:fillAG(handcards)
-				room:showAllCards(player)
 				for _,h in sgs.qlist(handcards) do
 					if sgs.Sanguosha:getCard(h):isRed() then
 						n = n + 1
@@ -3458,7 +3483,7 @@ NTD = sgs.CreateTriggerSkill
 				end
 				room:clearAG()
 			end
-			room:acquireSkill(player,"huimie")
+			
 			use.to = sgs.SPlayerList()
 			data:setValue(use)
 		end
@@ -4138,7 +4163,7 @@ wangling = sgs.CreateTriggerSkill{
 	end
 }
 
-SINANJU:addSkill(xiaya)
+if not sgs.Sanguosha:getSkill("xiaya") then SINANJU:addSkill(xiaya) end
 SINANJU:addSkill(zaishi)
 SINANJU:addSkill(wangling)
 
@@ -5039,11 +5064,13 @@ NTD2card = sgs.CreateSkillCard{
 		
 		source:loseMark("@NTD2")
 		room:loseMaxHp(source)
+		
+		room:acquireSkill(source, "baosang")
+		
 		if not source:isKongcheng() then
 			local n = 0
 			local handcards = source:handCards()
 			room:fillAG(handcards)
-			room:showAllCards(source)
 			for _,h in sgs.qlist(handcards) do
 				if sgs.Sanguosha:getCard(h):isBlack() then
 					n = n + 1
@@ -5058,7 +5085,6 @@ NTD2card = sgs.CreateSkillCard{
 			end
 			room:clearAG()
 		end
-		room:acquireSkill(source, "baosang")
 	end
 }
 
@@ -5364,7 +5390,8 @@ shenshi = sgs.CreateTriggerSkill{
 		if event == sgs.TargetSpecified or (event == sgs.TargetConfirmed and use.to:contains(player)) then
 			if use.card and use.card:isKindOf("Slash") and use.card:isBlack() then
 				if room:askForSkillInvoke(player, self:objectName(), data) then
-					room:broadcastSkillInvoke(self:objectName())
+					room:broadcastSkillInvoke(self:objectName(), math.random(1, 2))
+					room:broadcastSkillInvoke(self:objectName(), 3)
 					local log = sgs.LogMessage()
 					log.type = "#CardViewAs"
 					log.from = player
@@ -5398,11 +5425,13 @@ NTD3card = sgs.CreateSkillCard{
 		
 		source:loseMark("@NTD3")
 		room:loseMaxHp(source)
+		
+		room:acquireSkill(source, "zuzhou")
+		
 		if not source:isKongcheng() then
 			local n = 0
 			local handcards = source:handCards()
 			room:fillAG(handcards)
-			room:showAllCards(source)
 			for _,h in sgs.qlist(handcards) do
 				if sgs.Sanguosha:getCard(h):isBlack() then
 					n = n + 1
@@ -5417,7 +5446,6 @@ NTD3card = sgs.CreateSkillCard{
 			end
 			room:clearAG()
 		end
-		room:acquireSkill(source, "zuzhou")
 	end
 }
 
@@ -5579,7 +5607,14 @@ NORN:addRelateSkill("zuzhou")
 
 NORN_NTD = sgs.General(extension, "NORN_NTD", "EFSF", 4, true, true, true)
 
-PHENEX = sgs.General(extension, "PHENEX", "EFSF", 4, false, true, false)
+PHENEX = sgs.General(extension, "PHENEX", "EFSF", 4, false, false)
+
+PHENEX = sgs.General(extension, "PHENEX", "EFSF", 4, false, lucky_card, lucky_card)
+if lucky_card then
+	if saveItem("Unlock", "PHENEX", 0) then
+		PHENEX = sgs.General(extension, "PHENEX", "EFSF", 4, false, false)
+	end
+end
 
 shenniaocard = sgs.CreateSkillCard{
 	name = "shenniao",
@@ -5678,12 +5713,9 @@ NTD4vs = sgs.CreateZeroCardViewAsSkill{
 	response_pattern = "@@ntdfour",
 	view_as = function(self)
 		local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
-		slash:setSkillName(self:objectName())
+		slash:setSkillName("ntdfourcard")
 		return slash
-	end,
-	--enabled_at_play = function(self, player)
-	--	return false
-	--end
+	end
 }
 
 NTD4 = sgs.CreateTriggerSkill{
@@ -5698,8 +5730,9 @@ NTD4 = sgs.CreateTriggerSkill{
 		if source:objectName() == player:objectName() then
 			if player:getMark("@NTD4") == 0 then
 				room:sendCompulsoryTriggerLog(player, self:objectName())
+				room:broadcastSkillInvoke(self:objectName())
 				room:broadcastSkillInvoke("NTD")
-				room:doLightbox("image=image/animate/NTD4.png", 1500)
+				room:doLightbox("image=image/animate/ntdfour.png", 1500)
 				room:setEmotion(player, "NTD4")
 				room:getThread():delay(2700)
 				
@@ -5710,6 +5743,12 @@ NTD4 = sgs.CreateTriggerSkill{
 				room:loseMaxHp(player)
 				
 				--涅槃
+				local log = sgs.LogMessage()
+				log.type = "#InvokeSkill"
+				log.from = player
+				log.arg = "niepan"
+				room:sendLog(log)
+				
 				player:throwAllCards()
 				local maxhp = player:getMaxHp()
 				local hp = math.min(3, maxhp)
@@ -5725,11 +5764,12 @@ NTD4 = sgs.CreateTriggerSkill{
 					player:turnOver()
 				end
 				
+				room:acquireSkill(player, "qiji")
+				
 				if not player:isKongcheng() then
 					local has_basic = false
 					local handcards = player:handCards()
 					room:fillAG(handcards)
-					room:showAllCards(player)
 					for _, card in sgs.qlist(player:getHandcards()) do
 						if card:isKindOf("BasicCard") then
 							has_basic = true
@@ -5741,8 +5781,6 @@ NTD4 = sgs.CreateTriggerSkill{
 					end
 					room:clearAG()
 				end
-				
-				room:acquireSkill(player, "qiji")
 			end
 		end
 	end
@@ -5752,8 +5790,74 @@ NTD4_slash = sgs.CreateTargetModSkill{
 	name = "#ntdfour_slash",
 	pattern = "Slash",
 	distance_limit_func = function(self, player, card)
-		if card:getSkillName() == "ntdfour" then
+		if card:getSkillName() == "ntdfourcard" then
 			return 998
+		end
+	end
+}
+
+qijivs = sgs.CreateZeroCardViewAsSkill{
+	name = "qiji",
+	view_as = function(self)
+		local usereason = sgs.Sanguosha:getCurrentCardUseReason()
+		local pattern = sgs.Sanguosha:getCurrentCardUsePattern()
+		if usereason == sgs.CardUseStruct_CARD_USE_REASON_PLAY or pattern == "slash" then
+			local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_SuitToBeDecided, -1)
+			slash:addSubcard(sgs.Self:getHandcards():first())
+			slash:setSkillName(self:objectName())
+			return slash
+		else
+			local jink = sgs.Sanguosha:cloneCard("jink", sgs.Card_SuitToBeDecided, -1)
+			jink:addSubcard(sgs.Self:getHandcards():first())
+			jink:setSkillName(self:objectName())
+			return jink
+		end
+	end,
+	enabled_at_play = function(self, player)
+		return sgs.Slash_IsAvailable(player) and player:getMark(self:objectName()) == 1 and player:getHandcardNum() == 1
+	end,
+	enabled_at_response = function(self, player, pattern)
+		return (pattern == "slash" or pattern == "jink") and player:getMark(self:objectName()) == 1 and player:getHandcardNum() == 1
+	end
+}
+
+qiji = sgs.CreateTriggerSkill{
+	name = "qiji",
+	events = {sgs.CardUsed, sgs.CardResponded},
+	view_as_skill = qijivs,
+	can_trigger = function(self, player)
+		return player and player:isAlive()
+	end,
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local card = event == sgs.CardUsed and data:toCardUse().card or data:toCardResponse().m_card
+		if card:isNDTrick() then
+			local skillowners = room:findPlayersBySkillName(self:objectName())
+			for _, p in sgs.qlist(skillowners) do
+				if p:getMark(self:objectName()) ~= 1 and room:askForSkillInvoke(p, self:objectName(), data) then
+					ChangeSkill(self, room, p)
+					room:broadcastSkillInvoke(self:objectName())
+					p:drawCards(1, self:objectName())
+				end
+			end
+		elseif player:hasSkill(self) then
+			if (card:isKindOf("Slash") or card:isKindOf("Jink")) and card:getSkillName() == self:objectName() then
+				ChangeSkill(self, room, player)
+				if card:isRed() then
+					local tos = sgs.SPlayerList()
+					for _, p in sgs.qlist(room:getAlivePlayers()) do
+						if p:isWounded() then
+							tos:append(p)
+						end
+					end
+					if not tos:isEmpty() then
+						local target = room:askForPlayerChosen(player, tos, self:objectName(), "@@qiji", true)
+						if target then
+							room:recover(target, sgs.RecoverStruct(player, nil))
+						end
+					end
+				end
+			end
 		end
 	end
 }
@@ -5762,9 +5866,9 @@ PHENEX:addSkill(shenniao)
 PHENEX:addSkill(shenniao_clear)
 PHENEX:addSkill(NTD4)
 PHENEX:addSkill(NTD4_slash)
---local skills = sgs.SkillList()
---if not sgs.Sanguosha:getSkill("qiji") then skills:append(qiji) end
---sgs.Sanguosha:addSkills(skills)
+local skills = sgs.SkillList()
+if not sgs.Sanguosha:getSkill("qiji") then skills:append(qiji) end
+sgs.Sanguosha:addSkills(skills)
 PHENEX:addRelateSkill("qiji")
 
 PHENEX_NTD = sgs.General(extension, "PHENEX_NTD", "EFSF", 4, false, true, true)
@@ -6617,10 +6721,13 @@ AoyiTranslate = function(player, skillname)
 			value = string.gsub(value, "#9933ff", "grey", 1)
 		end
 		sgs.Sanguosha:addTranslationEntry(":" .. skillname, value)
+		--[[
 		room:detachSkillFromPlayer(player, skillname, true)
 		player:addSkill(skillname)
 		room:attachSkillToPlayer(player, skillname)
 		resumeHuaShen(player)
+		]]
+		ChangeCheck(player)
 	end
 end
 
@@ -7548,11 +7655,14 @@ shuangpaocard = sgs.CreateSkillCard{
 	will_throw = false,
 	on_use = function(self, room, source, targets)
 		room:loseHp(source)
+		source:drawCards(1, self:objectName())
+		--[[
 		local log = sgs.LogMessage()
 		log.from = source
 		log.arg = self:objectName()
 		log.type = "#shuangpao"
 		room:sendLog(log)
+		]]
 	end
 }
 
@@ -7576,76 +7686,104 @@ shuangpaovs = sgs.CreateViewAsSkill{
 
 shuangpao = sgs.CreateTriggerSkill{
 	name = "shuangpao",
-	events = {sgs.DamageCaused},
+	events = {sgs.TargetConfirmed, sgs.DamageCaused},
 	view_as_skill = shuangpaovs,
 	on_trigger = function(self,event,player,data)
 		local room = player:getRoom()
-		local damage = data:toDamage()
-		if damage.chain or damage.transfer or (not damage.by_user) then return false end
-		if player:distanceTo(damage.to) > 1 and damage.card:isKindOf("Slash") and player:hasUsed("#shuangpao") then
-			damage.damage = damage.damage + 1
-			data:setValue(damage)
-			return false
+		if event == sgs.TargetConfirmed then
+			local use = data:toCardUse()
+			if use.card and use.card:isKindOf("Slash") and player:hasUsed("#shuangpao") and use.to:length() == 1 then
+				room:setCardFlag(use.card, "shuangpao")
+			end
+		else
+			local damage = data:toDamage()
+			if damage.chain or damage.transfer or (not damage.by_user) then return false end
+			if damage.card and damage.card:isKindOf("Slash") and player:hasUsed("#shuangpao") and damage.card:hasFlag("shuangpao") then
+				local log = sgs.LogMessage()
+				log.type = "#tiexuedamage"
+				log.from = player
+				log.to:append(damage.to)
+				log.card_str = damage.card:toString()
+				log.arg = damage.damage
+				log.arg2 = damage.damage + 1
+				room:sendLog(log)
+				damage.damage = damage.damage + 1
+				data:setValue(damage)
+				return false
+			end
 		end
-	end,
+	end
+}
+
+shuangpao_target = sgs.CreateTargetModSkill{
+	name = "#shuangpao_target",
+	pattern = "Slash",
+	extra_target_func = function(self, player)
+		if player and player:hasSkill("shuangpao") and player:hasUsed("#shuangpao") then
+			return 1
+		end
+	end
 }
 
 ew_lingshi = sgs.CreateTriggerSkill{
 	name = "ew_lingshi",
 	frequency = sgs.Skill_Limited,
 	events = {sgs.GameStart,sgs.HpLost, sgs.Damaged},
+	limit_mark = "@ew_lingshi",
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-	if event == sgs.GameStart then
-		if player:getMark("@ew_lingshi") == 0 then
-			player:gainMark("@ew_lingshi")
-		end
-	end
-	if event == sgs.HpLost or event == sgs.Damaged then
-		if player:isKongcheng() and player:getMark("@ew_lingshi") > 0 and room:askForSkillInvoke(player, "ew_lingshi", data) then
-			player:loseMark("@ew_lingshi")
-			local sp_voice = 0
-			for _,p in sgs.qlist(room:getAlivePlayers()) do
-				if string.find(p:getGeneralName(), "EPYON") or string.find(p:getGeneral2Name(), "EPYON") then
-					sp_voice = 1
-					break
-				elseif string.find(p:getGeneralName(), "ALTRON") or string.find(p:getGeneral2Name(), "ALTRON") then
-					sp_voice = 2
-					break
+		if event == sgs.HpLost or event == sgs.Damaged then
+			if player:isKongcheng() and player:getMark("@ew_lingshi") > 0 and room:askForSkillInvoke(player, "ew_lingshi", data) then
+				player:loseMark("@ew_lingshi")
+				local sp_voice = 0
+				for _,p in sgs.qlist(room:getAlivePlayers()) do
+					if string.find(p:getGeneralName(), "EPYON") or string.find(p:getGeneral2Name(), "EPYON") then
+						sp_voice = 1
+						break
+					elseif string.find(p:getGeneralName(), "ALTRON") or string.find(p:getGeneral2Name(), "ALTRON") then
+						sp_voice = 2
+						break
+					end
 				end
+				if sp_voice == 1 then
+					-- 联动语音：艾比安
+					room:broadcastSkillInvoke("qishi",3)
+					--room:getThread():delay(2400)
+					room:doSuperLightbox("WZC", self:objectName())
+					room:broadcastSkillInvoke("ew_lingshi",8)
+					room:broadcastSkillInvoke("ew_lingshi",7)
+				elseif sp_voice == 2 then
+					-- 联动语音：双头龙改
+					room:broadcastSkillInvoke("ew_lingshi", 9)
+					--room:getThread():delay(3000)
+					room:doSuperLightbox("WZC", self:objectName())
+					room:broadcastSkillInvoke("ew_lingshi",8)
+				else
+					room:broadcastSkillInvoke("ew_lingshi",8)
+					room:broadcastSkillInvoke("ew_lingshi",math.random(1,6))
+					room:doSuperLightbox("WZC", self:objectName())
+				end
+				local id = sgs.Sanguosha:getCard(room:getDrawPile():at(room:getDrawPile():length()-1)):getId()
+				room:askForGuanxing(player, room:getNCards(5))
+				local x = 5
+				local dummy = sgs.Sanguosha:cloneCard("slash")
+				while room:getDrawPile():at(room:getDrawPile():length()+x-6) ~= id do
+					dummy:addSubcard(room:getDrawPile():at(room:getDrawPile():length()+x-6))
+					x = x - 1
+				end
+				room:recover(player, sgs.RecoverStruct(player, nil, x))
+				room:obtainCard(player, dummy, false)
+				player:turnOver()
 			end
-			if sp_voice == 1 then
-				-- 联动语音：艾比安
-				room:broadcastSkillInvoke("qishi",3)
-				--room:getThread():delay(2400)
-				room:doSuperLightbox("WZC", self:objectName())
-				room:broadcastSkillInvoke("ew_lingshi",8)
-				room:broadcastSkillInvoke("ew_lingshi",7)
-			elseif sp_voice == 2 then
-				-- 联动语音：双头龙改
-				room:broadcastSkillInvoke("ew_lingshi", 9)
-				--room:getThread():delay(3000)
-				room:doSuperLightbox("WZC", self:objectName())
-				room:broadcastSkillInvoke("ew_lingshi",8)
-			else
-				room:broadcastSkillInvoke("ew_lingshi",8)
-				room:broadcastSkillInvoke("ew_lingshi",math.random(1,6))
-				room:doSuperLightbox("WZC", self:objectName())
-			end
-			local id = sgs.Sanguosha:getCard(room:getDrawPile():at(room:getDrawPile():length()-1)):getId()
-			room:askForGuanxing(player, room:getNCards(10))
-			while sgs.Sanguosha:getCard(room:getDrawPile():at(room:getDrawPile():length()-1)):getId() ~= id do
-				room:obtainCard(player, room:getDrawPile():at(room:getDrawPile():length()-1), false)
-			end
-			player:turnOver()
 		end
 	end
-	end,
 }
 
-WZC:addSkill(feiyi)
+if not sgs.Sanguosha:getSkill("feiyi") then WZC:addSkill(feiyi) end
 WZC:addSkill(shuangpao)
+WZC:addSkill(shuangpao_target)
 WZC:addSkill(ew_lingshi)
+extension:insertRelatedSkills("shuangpao", "#shuangpao_target")
 
 DSH = sgs.General(extension, "DSH", "OTHERS", 4, true, false)
 
@@ -9039,7 +9177,8 @@ yinxian = sgs.CreateTriggerSkill
 			log.from = player
 			room:sendLog(log)
 			if player:getGeneralName() == "BLITZ" or player:getGeneral2Name() == "BLITZ" then
-				room:changeHero(player, "BLITZ_Y", false, false, player:getGeneralName() ~= "BLITZ", false)
+				--room:changeHero(player, "BLITZ_Y", false, false, player:getGeneralName() ~= "BLITZ", false)
+				room:setPlayerProperty(player, "general" .. (player:getGeneralName() == "BLITZ" and "" or "2"), sgs.QVariant("BLITZ_Y"))
 			end
 		end
 	elseif event == sgs.ConfirmDamage then
@@ -9073,7 +9212,8 @@ yinxian = sgs.CreateTriggerSkill
 			log.from = player
 			room:sendLog(log)
 			if player:getGeneralName() == "BLITZ_Y" or player:getGeneral2Name() == "BLITZ_Y" then
-				room:changeHero(player, "BLITZ", false, false, player:getGeneralName() ~= "BLITZ_Y", false)
+				--room:changeHero(player, "BLITZ", false, false, player:getGeneralName() ~= "BLITZ_Y", false)
+				room:setPlayerProperty(player, "general" .. (player:getGeneralName() == "BLITZ_Y" and "" or "2"), sgs.QVariant("BLITZ"))
 			end
 		end
 	end
@@ -9135,10 +9275,6 @@ BLITZ:addSkill(zhuanjin)
 extension:insertRelatedSkills("yinxian", "#yinxiand")
 
 BLITZ_Y = sgs.General(extension, "BLITZ_Y", "ZAFT", 4, true, true, true)--海市蜃楼特效
-
-BLITZ_Y:addSkill(yinxian)
-BLITZ_Y:addSkill(yinxiand)
-BLITZ_Y:addSkill(zhuanjin)
 
 FREEDOM = sgs.General(extension, "FREEDOM", "ORB", 3, true, false)
 
@@ -9415,7 +9551,7 @@ huiwu = sgs.CreateTriggerSkill
 	end,
 }
 
-JUSTICE:addSkill(helie)
+if not sgs.Sanguosha:getSkill("helie") then JUSTICE:addSkill(helie) end
 JUSTICE:addSkill(shouwang)
 JUSTICE:addSkill(zhongzij)
 local skills = sgs.SkillList()
@@ -9812,7 +9948,8 @@ chuangshi = sgs.CreateTriggerSkill
 		if damage.from and damage.from:isAlive() and damage.from:objectName() ~= player:objectName() and damage.damage >= player:getHp() then
 			room:sendCompulsoryTriggerLog(player, self:objectName())
 			room:broadcastSkillInvoke(self:objectName())
-			room:loseMaxHp(player)
+			--room:loseMaxHp(player)
+			room:detachSkillFromPlayer(player, self:objectName())
 			local d = sgs.DamageStruct()
 			if player:isAlive() then
 				d.from = player
@@ -9824,7 +9961,7 @@ chuangshi = sgs.CreateTriggerSkill
 	end
 }
 
-PROVIDENCE:addSkill(helie)
+if not sgs.Sanguosha:getSkill("helie") then PROVIDENCE:addSkill(helie) end
 PROVIDENCE:addSkill(longqi)
 PROVIDENCE:addSkill(chuangshi)
 
@@ -9904,15 +10041,6 @@ shenyuan = sgs.CreateTriggerSkill
 
 dadivs = sgs.CreateZeroCardViewAsSkill{
 	name = "dadi",
-	view_filter = function(self, card)
-		if sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
-			local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_SuitToBeDecided, -1)
-			slash:addSubcard(sgs.Self:getHandcards():first())
-			slash:deleteLater()
-			return slash:isAvailable(sgs.Self)
-		end
-		return true
-	end,
 	view_as = function(self)
 		local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_SuitToBeDecided, -1)
 		slash:addSubcard(sgs.Self:getHandcards():first())
@@ -10772,7 +10900,7 @@ dajiudistance = sgs.CreateDistanceSkill{
 	end
 }
 
-AKATSUKI_OOWASHI:addSkill(bachi)
+if not sgs.Sanguosha:getSkill("bachi") then AKATSUKI_OOWASHI:addSkill(bachi) end
 AKATSUKI_OOWASHI:addSkill(dajiu)
 AKATSUKI_OOWASHI:addSkill(dajiured)
 AKATSUKI_OOWASHI:addSkill(dajiudistance)
@@ -10796,7 +10924,7 @@ daijinvs = sgs.CreateViewAsSkill
 			for _,card in ipairs(cards) do
 				acard:addSubcard(card)
 			end
-			acard:setSkillName("daijin")
+			acard:setSkillName("daijincard")
 			return acard
 		end
 	end,
@@ -10839,7 +10967,7 @@ daijin = sgs.CreateTriggerSkill
 			end
 		else
 			local use = data:toCardUse()
-			if use.card and use.card:getSkillName() == "daijin" then
+			if use.card and use.card:getSkillName() == "daijincard" then
 				room:addPlayerHistory(player, "daijin")
 				if player:getMark("@seedsf") > 0 then
 					room:broadcastSkillInvoke(self:objectName(), 2)
@@ -10849,7 +10977,6 @@ daijin = sgs.CreateTriggerSkill
 				else
 					room:broadcastSkillInvoke(self:objectName(), 1)
 				end
-				return true
 			end
 		end
 	end
@@ -12562,10 +12689,10 @@ REBORNS_TRANSAMmark = sgs.CreateTriggerSkill{
 REBORNS_CANNON:addSkill(jidong)
 REBORNS_CANNON:addSkill(fengong)
 REBORNS_CANNON:addSkill(REBORNS_TRANSAMmark)
-REBORNS_GUNDAM:addSkill(jidong)
+if not sgs.Sanguosha:getSkill("jidong") then REBORNS_GUNDAM:addSkill(jidong) end
 REBORNS_GUNDAM:addSkill(zaisheng)
 REBORNS_GUNDAM:addSkill(REBORNS_TRANSAM)
-REBORNS_GUNDAM:addSkill(REBORNS_TRANSAMmark)
+if not sgs.Sanguosha:getSkill("#reborns_transammark") then REBORNS_GUNDAM:addSkill(REBORNS_TRANSAMmark) end
 
 HARUTE = sgs.General(extension, "HARUTE", "CB", 4, true, false)
 HARUTE:setGender(sgs.General_Neuter)
@@ -12636,7 +12763,7 @@ liuyanvs = sgs.CreateOneCardViewAsSkill{
 		return peach
 	end,
 	enabled_at_play = function(self, player)
-		local peach = sgs.Sanguosha:cloneCard("peach", sgs.Card_SuitToBeDecided, -1)
+		local peach = sgs.Sanguosha:cloneCard("peach")
 		peach:deleteLater()
 		return peach:isAvailable(player) and player:getMark("@MARUT") > 0 and not player:getPile("jian"):isEmpty()
 	end,
@@ -13917,7 +14044,7 @@ shengfengeffect = sgs.CreateTriggerSkill{
 	end
 }
 
-TRY_BURNING:addSkill(ciyuanbawangliu)
+if not sgs.Sanguosha:getSkill("ciyuanbawangliu") then TRY_BURNING:addSkill(ciyuanbawangliu) end
 TRY_BURNING:addSkill(hongbao)
 local skills = sgs.SkillList()
 if not sgs.Sanguosha:getSkill("shengfeng") then skills:append(shengfeng) end
@@ -14294,13 +14421,13 @@ huancai = sgs.CreateTriggerSkill{
 }
 
 G_SELF_PP:addSkill(huancai)
-G_SELF_PP:addSkill(G_SELF_skill)
-G_SELF_PP:addSkill(G_SELF_SPACE_skill)
-G_SELF_PP:addSkill(G_SELF_TRICKY_skill)
-G_SELF_PP:addSkill(G_SELF_ASS_skill)
-G_SELF_PP:addSkill(G_SELF_ASS_skill2)
-G_SELF_PP:addSkill(G_SELF_REF_skill)
-G_SELF_PP:addSkill(G_SELF_HT_skill)
+if not sgs.Sanguosha:getSkill("#G_SELF_skill") then G_SELF_PP:addSkill(G_SELF_skill) end
+if not sgs.Sanguosha:getSkill("#G_SELF_SPACE_skill") then G_SELF_PP:addSkill(G_SELF_SPACE_skill) end
+if not sgs.Sanguosha:getSkill("#G_SELF_TRICKY_skill") then G_SELF_PP:addSkill(G_SELF_TRICKY_skill) end
+if not sgs.Sanguosha:getSkill("#G_SELF_ASS_skill") then G_SELF_PP:addSkill(G_SELF_ASS_skill) end
+if not sgs.Sanguosha:getSkill("#G_SELF_ASS_skill2") then G_SELF_PP:addSkill(G_SELF_ASS_skill2) end
+if not sgs.Sanguosha:getSkill("#G_SELF_REF_skill") then G_SELF_PP:addSkill(G_SELF_REF_skill) end
+if not sgs.Sanguosha:getSkill("#G_SELF_HT_skill") then G_SELF_PP:addSkill(G_SELF_HT_skill) end
 extension:insertRelatedSkills("huancai", "#G_SELF_skill")
 extension:insertRelatedSkills("huancai", "#G_SELF_SPACE_skill")
 extension:insertRelatedSkills("huancai", "#G_SELF_TRICKY_skill")
@@ -14882,26 +15009,42 @@ function ChangeNumber(m, n)
 	return m
 end
 
-function ChangeCheck(player, name)
-	if player:getGeneralName() == name or player:getGeneral2Name() == name then
-		local x = player:getMaxHp()
-		local y = player:getHp()
-		local z = player:getKingdom()
-		player:getRoom():changeHero(player, name, false, true, player:getGeneral2Name() and player:getGeneral2Name() == name, false)
-		player:getRoom():setPlayerProperty(player, "maxhp", sgs.QVariant(x))
-		player:getRoom():setPlayerProperty(player, "hp", sgs.QVariant(math.min(y, player:getMaxHp())))
-		player:getRoom():setPlayerProperty(player, "kingdom", sgs.QVariant(player:getKingdom()))
+--动态描述
+function ChangeCheck(player)
+	local room = player:getRoom()
+	for _, skill in sgs.qlist(player:getVisibleSkillList()) do
+		if not skill:isAttachedLordSkill() then
+			local json = require("json")
+			local jsonValue = {
+				4, --S_GAME_EVENT_DETACH_SKILL
+				player:objectName(),
+				skill:objectName()
+			}
+			room:doBroadcastNotify(sgs.CommandType.S_COMMAND_LOG_EVENT, json.encode(jsonValue))
+			
+			jsonValue = {
+				6, --S_GAME_EVENT_ADD_SKILL
+				player:objectName(),
+				skill:objectName()
+			}
+			room:doBroadcastNotify(sgs.CommandType.S_COMMAND_LOG_EVENT, json.encode(jsonValue))
+			
+			room:doNotify(player, sgs.CommandType.S_COMMAND_ATTACH_SKILL, sgs.QVariant(skill:objectName()))
+		end
 	end
+	resumeHuaShen(player)
 end
 
-function ChangeSkill(self, room, player, wrong_number, max_number, name)
+function ChangeSkill(self, room, player, wrong_number, max_number)
 	if max_number == nil then max_number = 2 end
 	if wrong_number == nil then wrong_number = 1 end
-	if name then name = player:getGeneral2Name() else name = player:getGeneralName() end
 	room:addPlayerMark(player, self:objectName())
 	room:setPlayerMark(player, self:objectName(), ChangeNumber(player:getMark(self:objectName()), max_number))
-	sgs.Sanguosha:addTranslationEntry(":"..self:objectName(), ""..string.gsub(sgs.Sanguosha:translate(":"..self:objectName()), sgs.Sanguosha:translate(":"..self:objectName()), sgs.Sanguosha:translate(":"..self:objectName()..ChangeNumber(player:getMark(self:objectName()) + wrong_number, max_number))))
-	ChangeCheck(player, name)
+	local ip = room:getOwner():getIp()
+	if ip ~= "" and string.find(ip, "127.0.0.1") then --ZY奆神说：联机状态时动态描述无效
+		sgs.Sanguosha:addTranslationEntry(":"..self:objectName(), ""..string.gsub(sgs.Sanguosha:translate(":"..self:objectName()), sgs.Sanguosha:translate(":"..self:objectName()), sgs.Sanguosha:translate(":"..self:objectName()..ChangeNumber(player:getMark(self:objectName()) + wrong_number, max_number))))
+		ChangeCheck(player)
+	end
 	--room:removePlayerMark(player, "@ChangeSkill"..ChangeNumber(player:getMark(self:objectName()) + max_number - 1 + wrong_number, max_number))
 	--room:addPlayerMark(player, "@ChangeSkill"..ChangeNumber(player:getMark(self:objectName()) + max_number - wrong_number, max_number))
 	return player:getMark(self:objectName())
@@ -15426,6 +15569,8 @@ sgs.LoadTranslationTable{
 	[":skin"] = "出牌阶段，你可以更换武将皮肤。（课金啊~）",
 	["#lucky_card"] = "本局彩蛋卡牌为：%card<br>使用同名同花色同点数的牌时可获得 <b><font color='yellow'>1</font></b> 枚G币",
 	["#coin"] = "恭喜 %from 获得<img src=\"image/mark/@coin.png\">× %arg",
+	["bird_pendant"] = "银鸟吊坠",
+	["#bird_pendant"] = "恭喜 %from 获得<img src=\"image/mark/@bird_pendant.png\">%arg2 × %arg，集齐3枚可令 <b><font color='orange'>独角兽高达3号机菲尼克斯</font></b> 加入扭蛋机！",
 	["zy_system_z"] = "昼",
 	["zy_system_y"] = "夜",
 	["sun"] = "昼：判定牌<br>\z
@@ -15850,6 +15995,7 @@ sgs.LoadTranslationTable{
 	["#xuanguang"] = "%from 没有装备，触发“%arg”效果，防止了属性伤害",
 	["$shenshi1"] = "バラバラになっちまえ!",
 	["$shenshi2"] = "狙いは外さない!",
+	["$shenshi3"] = "（MGaAP）",
 	["$ntdthree1"] = "お前さえいなければ!!",
 	["$ntdthree2"] = "忌まわしいガンダム共が!!",
 	["$zuzhou1"] = "みんなで俺を否定するのか…",
@@ -15860,15 +16006,33 @@ sgs.LoadTranslationTable{
 	["$xuanguang2"] = "バンシィ、俺に力を貸してくれ…!",
 	
 	["PHENEX"] = "菲尼克斯",
-	["#PHENEX"] = "金色的不死鸟",
-	["~PHENEX"] = "",
-	["designer:PHENEX"] = "wch5621628 & Sankies & NOS7IM",
-	["cv:PHENEX"] = "",
-	["illustrator:PHENEX"] = "wch5621628",
+	["#PHENEX"] = "金之不死鸟",
+	["~PHENEX"] = "リタ：ねえ…天国って…本当にあると思う?\n\z
+ヨナ：ないよ…そんなの\n\z
+ミシェル：だね",
+	["designer:PHENEX"] = "高达杀制作者",
+	["cv:PHENEX"] = "莉塔·贝尔纳尔/乔纳·巴修塔",
+	["illustrator:PHENEX"] = "Sankies",
 	["shenniao"] = "神鸟",
 	[":shenniao"] = "出牌阶段限一次，你可以弃置一至两张基本牌，令等量名其他角色的装备无效，直到其下回合结束，若弃置的牌中有【挡】，则视为对其使用【杀】。",
 	["$ShenniaoNullify"] = "%to 的装备由于“%arg”效果无效，直到其下回合结束",
 	["$ShenniaoReset"] = "“%arg”效果消失，%from 的装备恢复有效",
+	["ntdfour"] = "NT-D",
+	[":ntdfour"] = "<img src=\"image/mark/@NTD4.png\"><b><font color='green'>觉醒技，</font></b>当你处于濒死状态时，你减1点体力上限，发动技能<b>“涅槃”</b>，展示你当前手牌，每有一张基本牌，你可以视为使用一张【杀】（无距离限制），并获得技能<b>“奇迹”</b>（<b><font color='magenta'>转换技，</font></b>①当一名角色使用通常锦囊时，你可以摸一张牌。②你可以将最后一张手牌当【杀】/【闪】使用或打出，若为<b><font color='red'>红色</font></b>，你可以令一名角色回复1点体力）。",
+	["ntdfourcard"] = "NT-D",
+	["@NTD4"] = "NT-D",
+	["@ntdfour"] = "请选择【杀】的目标角色（无距离限制）",
+	["~ntdfour"] = "选择目标→确定",
+	["qiji"] = "奇迹",
+	[":qiji"] = "<b><font color='magenta'>转换技，</font></b>①当一名角色使用通常锦囊时，你可以摸一张牌。②你可以将最后一张手牌当【杀】/【闪】使用或打出，若为<b><font color='red'>红色</font></b>，你可以令一名角色回复1点体力。",
+	[":qiji1"] = "<b><font color='magenta'>转换技，</font></b>①当一名角色使用通常锦囊时，你可以摸一张牌。<font color='#01A5AF'><s>②你可以将最后一张手牌当【杀】/【闪】使用或打出，若为<b><font color='red'>红色</font></b>，你可以令一名角色回复1点体力。</s></font>",
+	[":qiji2"] = "<b><font color='magenta'>转换技，</font></b><font color='#01A5AF'><s>①当一名角色使用通常锦囊时，你可以摸一张牌。</s></font>②你可以将最后一张手牌当【杀】/【闪】使用或打出，若为<b><font color='red'>红色</font></b>，你可以令一名角色回复1点体力。",
+	["@@qiji"] = "你可以令一名角色回复1点体力",
+	["$shenniao"] = "（Armed Armor DE）",
+	["$ntdfour"] = "君が鳥になるなら…俺は…俺も鳥になる!",
+	["$qiji1"] = "天国はどうかわかんないけど，あたし…魂って絶対にあると思うな",
+	["$qiji2"] = "今が全部じゃない，何度だつて生まれ変わるの",
+	["$qiji3"] = "次に生まれ変わるとしたら，あたし…鳥になりたいな。ヨナは?",
 	
 	["EX_S"] = "EX-S",
 	["#EX_S"] = "精灵的意志",
@@ -16083,9 +16247,9 @@ sgs.LoadTranslationTable{
 	["feiyi"] = "飞翼",
 	[":feiyi"] = "<b><font color='blue'>锁定技，</font></b>若你的体力为2或更少，你使用【杀】时无距离限制；若你的体力为1，你于出牌阶段可以额外使用一张【杀】。",
 	["liuxing"] = "流星",
-	[":liuxing"] = "<b>[1]</b>你可以增加<b>1</b>点数，将两张手牌当【杀】使用，使用时进行一次判定，若为<font color='red'><b>红色</b></font>，此牌造成的伤害+1。<br>\z
-	<br>\z
-	<b>{X}点数特效：</b>出牌阶段，你可以花费所有点数，然后摸等量张牌。",
+	[":liuxing"] = "<b>[1]</b>你可以增加<b>1</b>点数，将两张手牌当【杀】使用，使用时进行一次判定，若为<font color='red'><b>红色</b></font>，此牌造成的伤害+1。",--<br>\z
+	--<br>\z
+	--<b>{X}点数特效：</b>出牌阶段，你可以花费所有点数，然后摸等量张牌。",
 	["lingshi"] = "零式",
 	[":lingshi"] = "准备阶段开始时，若你的点数为3或更多，你可以观看牌堆顶的三张牌，并以任意顺序置于牌堆顶。",
 	["$wzpoint1"] = "完全に破壊する",
@@ -16142,11 +16306,13 @@ sgs.LoadTranslationTable{
 	["cv:WZC"] = "希罗·尤",
 	["illustrator:WZC"] = "Sankies",
 	["shuangpao"] = "双炮",
-	[":shuangpao"] = "出牌阶段限一次，你可以失去1点体力，若如此做，你本回合使用【杀】对距离1以外的目标角色造成的伤害+1。",
-	["#shuangpao"] = "%from 发动了“%arg”，本回合使用【杀】对距离1以外的目标角色造成的伤害+1。",
+	-- 旧版：[":shuangpao"] = "出牌阶段限一次，你可以失去1点体力，若如此做，你本回合使用【杀】对距离1以外的目标角色造成的伤害+1。",
+	[":shuangpao"] = "出牌阶段限一次，你可以失去1点体力并摸一张牌，若如此做，你本回合使用【杀】时可额外指定一个目标，若仅指定一个目标，此【杀】造成的伤害+1。",
+	--["#shuangpao"] = "%from 发动了“%arg”，本回合使用【杀】对距离1以外的目标角色造成的伤害+1。",
 	["ew_lingshi"] = "零式",
 	["@ew_lingshi"] = "零式",
-	[":ew_lingshi"] = "<img src=\"image/mark/@ew_lingshi.png\"><b><font color='red'>限定技，</font></b>当你没有手牌时失去体力后，你可以观看牌堆顶的十张牌，将其中任意数量的牌以任意顺序置于牌堆顶，你获得其余的牌，然后将你的武将牌翻面。",
+	-- 旧版：[":ew_lingshi"] = "<img src=\"image/mark/@ew_lingshi.png\"><b><font color='red'>限定技，</font></b>当你没有手牌时失去体力后，你可以观看牌堆顶的十张牌，将其中任意数量的牌以任意顺序置于牌堆顶，你获得其余的牌，然后将你的武将牌翻面。",
+	[":ew_lingshi"] = "<img src=\"image/mark/@ew_lingshi.png\"><b><font color='red'>限定技，</font></b>当你失去体力后，若你没有手牌，你可以观看牌堆顶的五张牌，将任意数量的牌置于牌堆顶，回复X点体力，然后获得其余的牌并将你的武将牌翻面。（X为以此法置于牌堆顶的牌数）",
 	["$shuangpao1"] = "排除開始",
 	["$shuangpao2"] = "フォーメーションを寸断する",
 	["$shuangpao3"] = "ターゲット、ロックオン…",
@@ -16515,7 +16681,7 @@ sgs.LoadTranslationTable{
 	["@longqi"] = "请观看一名其他角色的手牌并弃置其中一张<br>【闪】点数=%src<br>弃置点数%src的牌：对其造成1点伤害<br>弃置点数差为1的牌：重复此流程",
 	[":longqi"] = "当你使用或打出一张【闪】时，你可以：观看一名其他角色的手牌并弃置其中一张，若此牌与【闪】的点数相同，你对其造成1点伤害；若点数差为1，你可以重复此流程。",
 	["chuangshi"] = "创世",
-	[":chuangshi"] = "<b><font color='blue'>锁定技，</font></b>当你受到其他角色造成的伤害时，若伤害不小于你的体力值，你减1点体力上限，然后对伤害来源造成等量伤害。",
+	[":chuangshi"] = "<b><font color='blue'>锁定技，</font></b>当你受到其他角色造成的伤害时，若伤害不小于你的体力值，你失去此技能，然后对伤害来源造成等量伤害。",
 	["~PROVIDENCE"] = "扉がっ…! 最後の扉が!",
 	["PROVIDENCE"] = "天意",
 	["#PROVIDENCE"] = "终末之光",
@@ -16684,6 +16850,7 @@ sgs.LoadTranslationTable{
 	["illustrator:SF"] = "wch5621628",
 	["daijin"] = "殆烬",
 	[":daijin"] = "出牌阶段限一次，你可以将两张手牌当火【杀】使用，此【杀】可指定至多等量目标且无距离限制，对目标角色造成伤害后，令其一项非觉醒技无效，直到其下回合结束。",
+	["daijincard"] = "殆烬",
 	["$DaijinNullify"] = "%to 的技能“%arg”由于“%arg2”效果无效，直到其下回合结束",
 	["$DaijinReset"] = "“%arg2”效果消失，%from 的技能“%arg”恢复有效",
 	["zhongzisf"] = "种子",
@@ -17443,6 +17610,8 @@ if g_skin then
 	GOD_skin1 = sgs.General(extension, "GOD_skin1", "OTHERS", 4, true, true, true)
 	GOD_skin2 = sgs.General(extension, "GOD_skin2", "OTHERS", 4, true, true, true)
 	MASTER_skin1 = sgs.General(extension, "MASTER_skin1", "OTHERS", 4, true, true, true)
+	WZC_skin1 = sgs.General(extension, "WZC_skin1", "OTHERS", 4, true, true, true)
+	DX_skin1 = sgs.General(extension, "DX_skin1", "OTHERS", 4, true, true, true)
 	PERFECT_STRIKE_skin1 = sgs.General(extension, "PERFECT_STRIKE_skin1", "EFSF", 4, true, true, true)
 	FREEDOM_skin1 = sgs.General(extension, "FREEDOM_skin1", "ORB", 3, true, true, true)
 	FREEDOM_skin2 = sgs.General(extension, "FREEDOM_skin2", "ORB", 3, true, true, true)
@@ -17477,7 +17646,9 @@ end
 lucky_translate = function(refresh) --动态描述
 	if lucky_card then
 		if sgs.Sanguosha:translate("itemshow") == "itemshow" or refresh then			
-			saveItem("Item", "Coin", 0)
+			for _,it in pairs(item_list) do
+				saveItem("Item", it, 0)
+			end
 			for _,zb in pairs(zb_list) do
 				saveItem("Zabing", zb, 0)
 			end
@@ -17489,6 +17660,9 @@ lucky_translate = function(refresh) --动态描述
 				end
 			end
 			for _,un in pairs(unlock_list) do
+				saveItem("Unlock", un, 0)
+			end
+			for _,un in pairs(sp_unlock_list) do
 				saveItem("Unlock", un, 0)
 			end
 		
@@ -17535,23 +17709,34 @@ lucky_translate = function(refresh) --动态描述
 			
 			--Item
 			local g2_property = "<br><img src=\"image/mark/@coin.png\" height=\"25\" width=\"25\">G币 = "
-			g2_property = g2_property .. t["Item"]["Coin"]
+			g2_property = g2_property .. (t["Item"]["Coin"] or 0) .. "<br>"
+			for i = 2, #item_list do
+				local it = item_list[i]
+				g2_property = g2_property .. "<img src=\"image/mark/@" .. it .. ".png\" height=\"25\" width=\"25\">" .. sgs.Sanguosha:translate(it) .. " = "
+				g2_property = g2_property .. math.min(t["Item"][it] or 0, item_max[it]) .. " / " .. item_max[it] .. "<br>"
+			end
 			
 			--Zabing
-			g2_property = g2_property .. "<br><br><b>支援机使用权(35%×1, 25%×3)</b>:<br>"
+			g2_property = g2_property .. "<br><b>支援机使用权(35%×1, 25%×3)</b>:<br>"
 			for _,zb in pairs(zb_list) do
 				g2_property = g2_property .. sgs.Sanguosha:translate(zb) .. " = " .. t["Zabing"][zb]
 				g2_property = g2_property .. "<br>"
 			end
 			
 			--Skin
-			g2_property = g2_property .. "<br><b>机体皮肤(25%)</b>:<br>"
+			g2_property = g2_property .. "<br><b>机体皮肤(25%)</b>:"
+			if refresh then
+				g2_property = g2_property .. "<pre>"
+			else
+				g2_property = g2_property .. "<br>"
+			end
+			local skin_count = 0
 			for _,sk in pairs(g_skin_cp) do
 				for _,s in ipairs(sk) do
 					if string.find(s, "_skin") then
 						local n = tonumber(string.sub(s, string.len(s)))
 						local girl = ""
-						if table.contains({"CHAR_ZAKU_skin2", "SINANJU_skin2"}, s) then
+						if table.contains({"CHAR_ZAKU_skin2", "SINANJU_skin2", "WZC_skin1"}, s) then
 							girl = "(机娘红桃)"
 						end
 						g2_property = g2_property .. sgs.Sanguosha:translate(s) .. "皮肤" .. string.rep("I", n) .. girl .. ": "
@@ -17560,24 +17745,52 @@ lucky_translate = function(refresh) --动态描述
 						else
 							g2_property = g2_property .. "<font color='red'>已获得</font>"
 						end
-						g2_property = g2_property .. "<br>"
+						skin_count = skin_count + 1
+						if refresh and math.mod(skin_count, 3) ~= 0 then
+							g2_property = g2_property .. "&#9;"
+						else
+							g2_property = g2_property .. "<br>"
+						end
 					end
 				end
 			end
+			if refresh then
+				g2_property = g2_property .. "</pre>"
+			else
+				g2_property = g2_property .. "<br>"
+			end
 			
 			--Unlock
-			g2_property = g2_property .. "<br><b>解禁机体(15% 必定全新机体)</b>:<br>"
-			for i,un in pairs(unlock_list) do
+			g2_property = g2_property .. "<b>解禁机体(15% 必定全新机体)</b>:<br>"
+			for _,un in pairs(unlock_list) do
 				g2_property = g2_property .. sgs.Sanguosha:translate(un) .. ": "
 				if t["Unlock"][un] == 0 then
 					g2_property = g2_property .. "<font color='grey'>未解禁</font>"
 				else
 					g2_property = g2_property .. "<font color='red'>已解禁</font>"
 				end
-				if i ~= #unlock_list then
-					g2_property = g2_property .. "<br>"
-				end
+				g2_property = g2_property .. "<br>"
 			end
+			
+			--SP Unlock
+			for it,un in pairs(sp_unlock_list) do
+				g2_property = g2_property .. sgs.Sanguosha:translate(un) .. ": "
+				if t["Item"][it] < item_max[it] then
+					if un == "PHENEX" then
+						g2_property = g2_property .. "<font color='grey'>通关<b>“在重力井底”</b>，获得" .. item_max[it] .. "枚<b>“" .. sgs.Sanguosha:translate(it) .. "”</b>解禁</font>"
+					else
+						g2_property = g2_property .. "<font color='grey'>未解禁</font>"
+					end
+				elseif t["Unlock"][un] == 0 then
+					g2_property = g2_property .. "<font color='orange'>已加入扭蛋机</font>"
+				else
+					g2_property = g2_property .. "<font color='red'>已解禁</font>"
+				end
+				g2_property = g2_property .. "<br>"
+			end
+			
+			--Remove last newline
+			g2_property = string.gsub(g2_property, "<br>$", "")
 			
 			--[[
 			for i,a in pairs(tt) do

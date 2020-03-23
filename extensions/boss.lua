@@ -29,14 +29,43 @@ gainCoin = function(player, n)
 	
 	local ip = room:getOwner():getIp()
 	if (player:getState() == "online" or player:getState() == "trust") then
-		room:setPlayerMark(player, "add_coin", n)
+		room:setPlayerMark(player, "lucky_item_n", n)
 		--room:askForUseCard(player, "@@luckyrecord!", "@luckyrecord")
 		
 		room:acquireSkill(player, "#luckyrecordm", false)
 		player:getMaxCards() -- 强制让客户端执行MaxCardsSkill里的extra_func进行存档
 		room:detachSkillFromPlayer(player, "#luckyrecordm", true, true)
 		
-		room:setPlayerMark(player, "add_coin", 0)
+		room:setPlayerMark(player, "lucky_item_n", 0)
+		room:setPlayerFlag(player, "-g2data_saved")
+	end
+end
+
+--获得特殊道具
+gainSPItem = function(player, item, n)
+	if not n then n = 1 end
+	if n < 1 then return false end
+
+	local room = player:getRoom()
+	
+	local log = sgs.LogMessage()
+	log.type = "#" .. item
+	log.from = player
+	log.arg = n
+	log.arg2 = item
+	room:sendLog(log)
+	
+	local ip = room:getOwner():getIp()
+	if (player:getState() == "online" or player:getState() == "trust") then
+		room:setPlayerProperty(player, "lucky_item", sgs.QVariant(item))
+		room:setPlayerMark(player, "lucky_item_n", n)
+		
+		room:acquireSkill(player, "#luckyrecordm", false)
+		player:getMaxCards() -- 强制让客户端执行MaxCardsSkill里的extra_func进行存档
+		room:detachSkillFromPlayer(player, "#luckyrecordm", true, true)
+		
+		room:setPlayerProperty(player, "lucky_item", sgs.QVariant())
+		room:setPlayerMark(player, "lucky_item_n", 0)
 		room:setPlayerFlag(player, "-g2data_saved")
 	end
 end
@@ -446,7 +475,7 @@ _mini_5_skill = sgs.CreateTriggerSkill{
 -- 3. 若BOSS未觉醒：讨伐队角色回合开始时，有30%机率触发效果：受到BOSS专用支援机“渣古I狙击型”的【贯穿射击】
 -- 4. 若BOSS已觉醒：讨伐队角色回合结束后，若下家不为BOSS，则BOSS进行一个额外的回合
 
--- 讨伐队赢了可以拿15个G币
+-- 讨伐队赢了可以拿15个G币&1枚银鸟吊坠
 _mini_6_skill = sgs.CreateTriggerSkill{
 	name = "_mini_6_skill",
 	events = {sgs.GameOverJudge, sgs.EventPhaseEnd, sgs.DrawNCards, sgs.EventPhaseStart},
@@ -466,6 +495,7 @@ _mini_6_skill = sgs.CreateTriggerSkill{
 				for _,p in sgs.qlist(room:getAllPlayers(true)) do
 					if p:objectName() ~= player:objectName() then
 						gainCoin(p, 15)
+						gainSPItem(p, "bird_pendant")
 					end
 				end
 			end
@@ -653,8 +683,7 @@ boss_qiangnian = sgs.CreateTriggerSkill{
 			local can_invoke = player:getHp() <= 4
 			if not can_invoke then
 				for _, p in sgs.qlist(room:getAlivePlayers()) do
-					-- Consider Phenex later
-					if p:hasSkill("NTD") and p:getMark("@NTD") > 0 or p:hasSkill("ntdtwo") and p:getMark("@NTD2") == 0 or p:hasSkill("ntdthree") and p:getMark("@NTD3") == 0 then
+					if p:hasSkill("NTD") and p:getMark("@NTD") > 0 or p:hasSkill("ntdtwo") and p:getMark("@NTD2") == 0 or p:hasSkill("ntdthree") and p:getMark("@NTD3") == 0 or p:hasSkill("ntdfour") and p:getMark("@NTD4") > 0 then
 						can_invoke = true
 						break
 					end
@@ -734,7 +763,7 @@ sgs.LoadTranslationTable{
 	[":boss_miehou"] = "<b><font color='red'>充能技，</font></b>出牌阶段限一次，你可以消耗6点充能点数，视为你使用【酒】并对所有其他角色使用【杀】。",
 	["boss_miehou_card"] = "灭吼",
 	["boss_qiangnian"] = "强念",
-	[":boss_qiangnian"] = "<img src=\"image/mark/@boss_qiangnian.png\"><b><font color='green'>觉醒技，</font></b>准备阶段开始时，若你的体力为4或更低，或有角色已发动<b>“NTD”</b>，你将体力上限减至4点，摸4张牌，补满6点充能点数，启动<span style=\"background-color: #581a1d\"><font color='#eb8f1e'><b>“灭绝爆发”</b></span></font>。",
+	[":boss_qiangnian"] = "<img src=\"image/mark/@boss_qiangnian.png\"><b><font color='green'>觉醒技，</font></b>准备阶段开始时，若你的体力为4或更低，或有角色已发动<b>“NT-D”</b>，你将体力上限减至4点，摸4张牌，补满6点充能点数，启动<span style=\"background-color: #581a1d\"><font color='#eb8f1e'><b>“灭绝爆发”</b></span></font>。",
 	["SHAMBLO_skin1"] = "尚布罗",
 	["ZAKU_I_ST"] = "渣古I狙击型",
 }

@@ -37,7 +37,7 @@ end
 
 sgs.ai_use_value.Shoot = sgs.ai_use_value.Slash
 sgs.ai_keep_value.Shoot = sgs.ai_keep_value.Slash
-sgs.ai_use_priority.Shoot = sgs.ai_use_priority.Slash
+sgs.ai_use_priority.Shoot = sgs.ai_use_priority.Slash + 0.1
 
 function SmartAI:useCardPierceShoot(card, use)
 	if #self.enemies == 0 then return false end
@@ -103,7 +103,7 @@ end
 
 sgs.ai_use_value.SpreadShoot = sgs.ai_use_value.Slash + 0.1
 sgs.ai_keep_value.SpreadShoot = sgs.ai_keep_value.Slash + 0.1
-sgs.ai_use_priority.SpreadShoot = sgs.ai_use_priority.Slash
+sgs.ai_use_priority.SpreadShoot = sgs.ai_use_priority.Slash + 0.1
 
 sgs.ai_skill_cardask["@Guard"] = function(self, data, pattern)
 	--强武
@@ -122,6 +122,22 @@ sgs.ai_skill_cardask["@Guard"] = function(self, data, pattern)
 				end
 				return ("%s:luaqiangwu[%s:%s]=%d"):format(name, suit, number, card_id)
 			end
+		end
+	end
+	
+	for _,id in sgs.qlist(self.player:getHandPile()) do
+		local card = sgs.Sanguosha:getCard(id)
+		if card:getClassName():endsWith("Guard") then
+			return card:getEffectiveId()
+		end
+	end
+	
+	--融合
+	local list = self.player:property("ronghe"):toString():split("+")
+	for _,l in pairs(list) do
+		local card = sgs.Sanguosha:getCard(tonumber(l))
+		if card:getClassName():endsWith("Guard") then
+			return card:getEffectiveId()
 		end
 	end
 	

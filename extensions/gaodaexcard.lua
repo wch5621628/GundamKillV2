@@ -137,7 +137,7 @@ sgs.LoadTranslationTable{
 	<b>时机</b>：出牌阶段\
 	<b>目标</b>：一名其他角色\
 	<b>效果</b>：将此牌移出游戏，对目标角色造成1点火焰伤害，若你的装备区有<b><font color='red'>红色</font></b>坐骑牌，此伤害+1。\
-<I>FINAL VENT——《假面骑士龙骑》</I>",
+<font color='red'>“戦わなければ生き残れない”<p align='right'>——《假面骑士龙骑》</p></font>",
 
 	["decade"] = "必杀卡-DECADE",
 	["Decade"] = "必杀卡-DECADE",
@@ -145,5 +145,5 @@ sgs.LoadTranslationTable{
 	<b>时机</b>：出牌阶段\
 	<b>目标</b>：一名其他角色\
 	<b>效果</b>：将此牌移出游戏，依次亮出牌堆顶的九张牌，对目标角色造成1点伤害，若亮出的牌点数均小于10，此伤害+1。\
-<I>FINAL ATTACKRIDE - D-D-D-DECADE——《假面骑士DECADE》</I>",
+<font color='magenta'>“通りすがりの仮面ライダーだ、覚えておけ！”<p align='right'>——《假面骑士DECADE》</p></font>",
 }

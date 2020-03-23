@@ -289,6 +289,22 @@ Guard_skill = sgs.CreateTriggerSkill{
 					return true
 				end
 			end
+			
+			for _,id in sgs.qlist(target:getHandPile()) do
+				local card = sgs.Sanguosha:getCard(id)
+				if card:getClassName():endsWith("Guard") then
+					return true
+				end
+			end
+			
+			--融合
+			local list = target:property("ronghe"):toString():split("+")
+			for _,l in pairs(list) do
+				local card = sgs.Sanguosha:getCard(tonumber(l))
+				if card:getClassName():endsWith("Guard") then
+					return true
+				end
+			end
 		end
 		return false
 	end,
