@@ -1,6 +1,4 @@
 
-general:VILLKISS role:lord starter:true 
-general:ENRYUGO role:loyalist 
-general:select role:rebel 
-general:select role:rebel 
-general:select role:rebel 
+setPile:1
+general:SINANJU role:lord starter:true draw:0 hand:275,276 judge:124 
+general:DX role:rebel draw:0 hand:0 
