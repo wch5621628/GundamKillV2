@@ -2103,7 +2103,10 @@ luckyrecord = sgs.CreateTriggerSkill{
 if lucky_card then
 	local DailyCoin = function()
 		math.random()
-		if math.random(1, 100) <= 60 then
+		if os.date("%w") == "0" then
+			saveItem("Item", "Coin", 7)
+			sgs.Alert("【周日特别奖励】\n欢迎进入高达杀的世界\n恭喜你获得 7 枚G币！")
+		elseif math.random(1, 100) <= 60 then
 			saveItem("Item", "Coin", 1)
 			sgs.Alert("【每日奖励】\n欢迎进入高达杀的世界\n恭喜你获得 1 枚G币！")
 		else
@@ -2112,33 +2115,22 @@ if lucky_card then
 		end
 	end
 	
-	local today =  tonumber(os.date("%y")..os.date("%m")..os.date("%d"))
-	--local file = io.open(g3data, "r")
+	local today =  tonumber(os.date("%Y")..os.date("%m")..os.date("%d"))
+
 	local t = readData("Daily")
-	--if file == nil then
+
 	if next(t["Daily"]) == nil then
-		--local file2 = io.open(g3data, "w")
-		--file2:write(math.pow(tonumber(today), 2))
-		--file2:close()
-		t["Daily"][1] = math.pow(today, 2)
+		t["Daily"][1] = today
 		writeData(t)
 		DailyCoin()
 	else
-		--local _date = file:read()
-		--file:close()
 		local _date = t["Daily"][1]
-		if _date < 0 or math.pow(_date, 0.5) ~= math.floor(math.pow(_date, 0.5)) then
-			--local file2 = io.open(g3data, "w")
-			--file2:write(math.pow(tonumber(today), 2))
-			--file2:close()
-			t["Daily"][1] = math.pow(today, 2)
+		if type(_date) ~= "number" or _date < 0 then
+			t["Daily"][1] = today
 			writeData(t)
 			sgs.Alert("温馨提示：\n文明游戏，别改存档哦～")
-		elseif _date ~= math.pow(today, 2) then
-			--local file2 = io.open(g3data, "w")
-			--file2:write(math.pow(tonumber(today), 2))
-			--file2:close()
-			t["Daily"][1] = math.pow(tonumber(today), 2)
+		elseif _date ~= today then
+			t["Daily"][1] = today
 			writeData(t)
 			DailyCoin()
 			
@@ -5853,6 +5845,7 @@ qiji = sgs.CreateTriggerSkill{
 					if not tos:isEmpty() then
 						local target = room:askForPlayerChosen(player, tos, self:objectName(), "@@qiji", true)
 						if target then
+							room:doAnimate(1, player:objectName(), target:objectName())
 							room:recover(target, sgs.RecoverStruct(player, nil))
 						end
 					end

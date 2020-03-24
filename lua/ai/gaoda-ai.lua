@@ -2013,7 +2013,9 @@ sgs.ai_use_value["qiji"] = sgs.ai_use_value.Slash + 1
 sgs.ai_use_priority["qiji"] = sgs.ai_use_priority.Slash + 1
 
 sgs.ai_skill_playerchosen.qiji = function(self, targets)
-	for _, target in sgs.qlist(targets) do
+	targets = sgs.QList2Table(targets)
+	self:sort(targets, "hp")
+	for _, target in ipairs(targets) do
 		if self:isFriend(target) then
 			return target
 		end
