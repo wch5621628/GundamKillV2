@@ -1,4 +1,9 @@
 
-setPile:1
-general:SINANJU role:lord starter:true draw:0 hand:275,276 judge:124 
-general:DX role:rebel draw:0 hand:0 
+general:BAEL role:lord starter:true draw:0 
+general:REX role:renegade hp:1 turned:true draw:0 hand:1 
+general:MASTER role:rebel hp:1 draw:0 
+general:REBORNS_GUNDAM role:loyalist hp:2 draw:0 
+general:BANSHEE role:rebel hp:2 draw:0 equip:57 hand:30,31 
+general:SAVIOUR role:rebel draw:0 hand:7,6,5,4 
+general:G_SELF_PP role:loyalist hp:3 draw:0 equip:69 hand:0 
+general:JESTA role:rebel 

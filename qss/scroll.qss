@@ -1,23 +1,23 @@
 QTextEdit QScrollBar:vertical {
     border: 1px solid gray;
-    background-color: rgba(255, 228, 45, 50);
+    background-color: rgba(255, 228, 45, 50); /* GundamKillV2 */
     width: 10px;
     margin: 21px 0 21px 0;
 }
 
 QTextEdit QScrollBar::handle:vertical {
-    background-color: rgb(36, 103, 249, 200);
+    background-color: rgba(36, 103, 249, 200); /* GundamKillV2 */
     min-height: 20px;
 }
 
 QTextEdit QScrollBar::handle:vertical:hover {
-    background-color: rgb(36, 103, 249, 255);
+    background-color: rgba(36, 103, 249, 255); /* GundamKillV2 */
     min-height: 20px;
 }
 
 QTextEdit QScrollBar::add-line:vertical {
     border: 1px solid gray;
-    background-color: rgba(255, 228, 45, 50);
+    background-color: rgba(255, 228, 45, 50); /* GundamKillV2 */
     height: 20px;
     subcontrol-position: bottom;
     subcontrol-origin: margin;
@@ -25,7 +25,7 @@ QTextEdit QScrollBar::add-line:vertical {
 
 QTextEdit QScrollBar::sub-line:vertical {
     border: 1px solid gray;
-    background-color: rgba(255, 228, 45, 50);
+    background-color: rgba(255, 228, 45, 50); /* GundamKillV2 */
     height: 20px;
     subcontrol-position: top;
     subcontrol-origin: margin;
